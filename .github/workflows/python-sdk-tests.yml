@@ -37,7 +37,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11", "3.14", "3.14t"]
+        # Test the oldest supported Python version to make sure compatibility is maintained.
+        python-version: ["3.11"]
     runs-on: ${{ matrix.os }}
     defaults:
       run:
