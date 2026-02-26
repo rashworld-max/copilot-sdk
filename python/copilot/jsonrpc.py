@@ -103,7 +103,9 @@ class JsonRpcClient:
         if self._stderr_thread:
             self._stderr_thread.join(timeout=1.0)
 
-    async def request(self, method: str, params: dict | None = None, timeout: float | None = None) -> Any:
+    async def request(
+        self, method: str, params: dict | None = None, timeout: float | None = None
+    ) -> Any:
         """
         Send a JSON-RPC request and wait for response
 
