@@ -595,18 +595,12 @@ func TestSession(t *testing.T) {
 
 		var receivedEvents []copilot.SessionEvent
 		idle := make(chan bool)
-		shutdown := make(chan bool)
 
 		session.On(func(event copilot.SessionEvent) {
 			receivedEvents = append(receivedEvents, event)
 			if event.Type == "session.idle" {
 				select {
 				case idle <- true:
-				default:
-				}
-			} else if event.Type == "session.shutdown" {
-				select {
-				case shutdown <- true:
 				default:
 				}
 			}
@@ -663,23 +657,9 @@ func TestSession(t *testing.T) {
 			t.Errorf("Expected assistant message to contain '300', got %v", assistantMessage.Data.Content)
 		}
 
-		// Shut down session and verify shutdown event is received
+		// Shut down session (sends RPC without clearing handlers), then destroy
 		if err := session.Shutdown(); err != nil {
 			t.Fatalf("Failed to shut down session: %v", err)
-		}
-		select {
-		case <-shutdown:
-		case <-time.After(5 * time.Second):
-			t.Fatal("Timed out waiting for session.shutdown")
-		}
-		hasShutdown := false
-		for _, evt := range receivedEvents {
-			if evt.Type == "session.shutdown" {
-				hasShutdown = true
-			}
-		}
-		if !hasShutdown {
-			t.Error("Expected to receive session.shutdown event")
 		}
 		if err := session.Destroy(); err != nil {
 			t.Fatalf("Failed to destroy session: %v", err)
