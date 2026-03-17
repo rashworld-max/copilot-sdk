@@ -66,10 +66,7 @@ type SessionEvent struct {
 	// Conversation compaction results including success status, metrics, and optional error
 	// details
 	//
-	// Task completion notification with optional summary from the agent
-	//
-	// User message content with optional attachments, source information, and interaction
-	// metadata
+	// Task completion notification with summary from the agent
 	//
 	// Empty payload; the event signals that the pending message queue has changed
 	//
@@ -203,10 +200,7 @@ type SessionEvent struct {
 // Conversation compaction results including success status, metrics, and optional error
 // details
 //
-// # Task completion notification with optional summary from the agent
-//
-// User message content with optional attachments, source information, and interaction
-// metadata
+// # Task completion notification with summary from the agent
 //
 // Empty payload; the event signals that the pending message queue has changed
 //
@@ -343,6 +337,12 @@ type Data struct {
 	Stack *string `json:"stack,omitempty"`
 	// HTTP status code from the upstream request, if applicable
 	StatusCode *int64 `json:"statusCode,omitempty"`
+	// Optional URL associated with this error that the user can open in a browser
+	//
+	// Optional URL associated with this message that the user can open in a browser
+	//
+	// Optional URL associated with this warning that the user can open in a browser
+	URL *string `json:"url,omitempty"`
 	// Background tasks still running when the agent became idle
 	BackgroundTasks *BackgroundTasks `json:"backgroundTasks,omitempty"`
 	// The new display title for the session
@@ -383,7 +383,7 @@ type Data struct {
 	SourceType *SourceType `json:"sourceType,omitempty"`
 	// Summary of the work done in the source session
 	//
-	// Optional summary of the completed task, provided by the agent
+	// Summary of the completed task, provided by the agent
 	//
 	// Summary of the plan that was created
 	Summary *string `json:"summary,omitempty"`
@@ -530,9 +530,9 @@ type Data struct {
 	//
 	// CAPI interaction ID for correlating this tool execution with upstream telemetry
 	InteractionID *string `json:"interactionId,omitempty"`
-	// Origin of this message, used for timeline filtering and telemetry (e.g., "user",
-	// "autopilot", "skill", or "command")
-	Source *Source `json:"source,omitempty"`
+	// Origin of this message, used for timeline filtering (e.g., "skill-pdf" for skill-injected
+	// messages that should be hidden from the user)
+	Source *string `json:"source,omitempty"`
 	// Transformed version of the message sent to the model, with XML wrapping, timestamps, and
 	// other augmentations for prompt caching
 	TransformedContent *string `json:"transformedContent,omitempty"`
@@ -617,6 +617,9 @@ type Data struct {
 	// Unique identifier for the completed tool call
 	//
 	// Tool call ID of the parent tool invocation that spawned this sub-agent
+	//
+	// The LLM-assigned tool call ID that triggered this request; used by remote UIs to
+	// correlate responses
 	//
 	// Tool call ID assigned to this external tool invocation
 	ToolCallID *string `json:"toolCallId,omitempty"`
@@ -706,6 +709,16 @@ type Data struct {
 	PlanContent *string `json:"planContent,omitempty"`
 	// The recommended action for the user to take
 	RecommendedAction *string `json:"recommendedAction,omitempty"`
+	// Array of resolved skill metadata
+	Skills []Skill `json:"skills,omitempty"`
+	// Array of MCP server status summaries
+	Servers []Server `json:"servers,omitempty"`
+	// Name of the MCP server whose status changed
+	ServerName *string `json:"serverName,omitempty"`
+	// New connection status: connected, failed, pending, disabled, or not_configured
+	Status *ServerStatus `json:"status,omitempty"`
+	// Array of discovered extensions and their status
+	Extensions []Extension `json:"extensions,omitempty"`
 }
 
 // A user message attachment — a file, directory, code selection, blob, or GitHub reference
@@ -885,6 +898,17 @@ type ErrorClass struct {
 	Stack *string `json:"stack,omitempty"`
 }
 
+type Extension struct {
+	// Source-qualified extension ID (e.g., 'project:my-ext', 'user:auth-helper')
+	ID string `json:"id"`
+	// Extension name (directory name)
+	Name string `json:"name"`
+	// Discovery source
+	Source Source `json:"source"`
+	// Current status: running, disabled, failed, or starting
+	Status ExtensionStatus `json:"status"`
+}
+
 // Structured metadata identifying what triggered this notification
 type KindClass struct {
 	// Unique identifier of the background agent
@@ -898,8 +922,8 @@ type KindClass struct {
 	// The full prompt given to the background agent
 	Prompt *string `json:"prompt,omitempty"`
 	// Whether the agent completed successfully or failed
-	Status *Status  `json:"status,omitempty"`
-	Type   KindType `json:"type"`
+	Status *KindStatus `json:"status,omitempty"`
+	Type   KindType    `json:"type"`
 	// Exit code of the shell command, if available
 	ExitCode *float64 `json:"exitCode,omitempty"`
 	// Unique identifier of the shell session
@@ -964,7 +988,7 @@ type PermissionRequest struct {
 	// Whether the UI can offer session-wide approval for this command pattern
 	CanOfferSessionApproval *bool `json:"canOfferSessionApproval,omitempty"`
 	// Parsed command identifiers found in the command text
-	Commands []CommandElement `json:"commands,omitempty"`
+	Commands []Command `json:"commands,omitempty"`
 	// The complete shell command text to be executed
 	FullCommandText *string `json:"fullCommandText,omitempty"`
 	// Whether the command includes a file write redirection (e.g., > or >>)
@@ -1027,7 +1051,7 @@ type PermissionRequest struct {
 	ToolArgs interface{} `json:"toolArgs"`
 }
 
-type CommandElement struct {
+type Command struct {
 	// Command identifier (e.g., executable name)
 	Identifier string `json:"identifier"`
 	// Whether this command is read-only (no side effects)
@@ -1172,6 +1196,32 @@ type ResourceClass struct {
 	Blob *string `json:"blob,omitempty"`
 }
 
+type Server struct {
+	// Error message if the server failed to connect
+	Error *string `json:"error,omitempty"`
+	// Server name (config key)
+	Name string `json:"name"`
+	// Configuration source: user, workspace, plugin, or builtin
+	Source *string `json:"source,omitempty"`
+	// Connection status: connected, failed, pending, disabled, or not_configured
+	Status ServerStatus `json:"status"`
+}
+
+type Skill struct {
+	// Description of what the skill does
+	Description string `json:"description"`
+	// Whether the skill is currently enabled
+	Enabled bool `json:"enabled"`
+	// Unique identifier for the skill
+	Name string `json:"name"`
+	// Absolute path to the skill file, if available
+	Path *string `json:"path,omitempty"`
+	// Source location type of the skill (e.g., project, personal, plugin)
+	Source string `json:"source"`
+	// Whether the skill can be invoked by the user as a slash command
+	UserInvocable bool `json:"userInvocable"`
+}
+
 // A tool invocation request from the assistant
 type ToolRequest struct {
 	// Arguments to pass to the tool, format depends on the tool
@@ -1193,10 +1243,10 @@ type ToolRequest struct {
 type AgentMode string
 
 const (
-	AgentModeAutopilot AgentMode = "autopilot"
-	AgentModeShell     AgentMode = "shell"
-	Interactive        AgentMode = "interactive"
-	Plan               AgentMode = "plan"
+	AgentModeShell AgentMode = "shell"
+	Autopilot      AgentMode = "autopilot"
+	Interactive    AgentMode = "interactive"
+	Plan           AgentMode = "plan"
 )
 
 // Type of GitHub reference
@@ -1226,18 +1276,37 @@ const (
 	Github HostType = "github"
 )
 
-// Whether the agent completed successfully or failed
-type Status string
+// Discovery source
+type Source string
 
 const (
-	Completed Status = "completed"
-	Failed    Status = "failed"
+	Project Source = "project"
+	User    Source = "user"
+)
+
+// Current status: running, disabled, failed, or starting
+type ExtensionStatus string
+
+const (
+	PurpleDisabled ExtensionStatus = "disabled"
+	PurpleFailed   ExtensionStatus = "failed"
+	Running        ExtensionStatus = "running"
+	Starting       ExtensionStatus = "starting"
+)
+
+// Whether the agent completed successfully or failed
+type KindStatus string
+
+const (
+	Completed    KindStatus = "completed"
+	FluffyFailed KindStatus = "failed"
 )
 
 type KindType string
 
 const (
 	AgentCompleted         KindType = "agent_completed"
+	AgentIdle              KindType = "agent_idle"
 	ShellCompleted         KindType = "shell_completed"
 	ShellDetachedCompleted KindType = "shell_detached_completed"
 )
@@ -1312,8 +1381,21 @@ const (
 type Role string
 
 const (
-	Developer  Role = "developer"
-	RoleSystem Role = "system"
+	Developer Role = "developer"
+	System    Role = "system"
+)
+
+// Connection status: connected, failed, pending, disabled, or not_configured
+//
+// New connection status: connected, failed, pending, disabled, or not_configured
+type ServerStatus string
+
+const (
+	Connected       ServerStatus = "connected"
+	FluffyDisabled  ServerStatus = "disabled"
+	NotConfigured   ServerStatus = "not_configured"
+	Pending         ServerStatus = "pending"
+	TentacledFailed ServerStatus = "failed"
 )
 
 // Whether the session ended normally ("routine") or due to a crash/fatal error ("error")
@@ -1322,23 +1404,6 @@ type ShutdownType string
 const (
 	Error   ShutdownType = "error"
 	Routine ShutdownType = "routine"
-)
-
-// Origin of this message, used for timeline filtering and telemetry (e.g., "user",
-// "autopilot", "skill", or "command")
-type Source string
-
-const (
-	Command                       Source = "command"
-	ImmediatePrompt               Source = "immediate-prompt"
-	JITInstruction                Source = "jit-instruction"
-	Other                         Source = "other"
-	Skill                         Source = "skill"
-	SnippyBlocking                Source = "snippy-blocking"
-	SourceAutopilot               Source = "autopilot"
-	SourceSystem                  Source = "system"
-	ThinkingExhaustedContinuation Source = "thinking-exhausted-continuation"
-	User                          Source = "user"
 )
 
 // Origin type of the session being handed off
@@ -1389,14 +1454,18 @@ const (
 	SessionCompactionStart        SessionEventType = "session.compaction_start"
 	SessionContextChanged         SessionEventType = "session.context_changed"
 	SessionError                  SessionEventType = "session.error"
+	SessionExtensionsLoaded       SessionEventType = "session.extensions_loaded"
 	SessionHandoff                SessionEventType = "session.handoff"
 	SessionIdle                   SessionEventType = "session.idle"
 	SessionInfo                   SessionEventType = "session.info"
+	SessionMCPServerStatusChanged SessionEventType = "session.mcp_server_status_changed"
+	SessionMCPServersLoaded       SessionEventType = "session.mcp_servers_loaded"
 	SessionModeChanged            SessionEventType = "session.mode_changed"
 	SessionModelChange            SessionEventType = "session.model_change"
 	SessionPlanChanged            SessionEventType = "session.plan_changed"
 	SessionResume                 SessionEventType = "session.resume"
 	SessionShutdown               SessionEventType = "session.shutdown"
+	SessionSkillsLoaded           SessionEventType = "session.skills_loaded"
 	SessionSnapshotRewind         SessionEventType = "session.snapshot_rewind"
 	SessionStart                  SessionEventType = "session.start"
 	SessionTaskComplete           SessionEventType = "session.task_complete"

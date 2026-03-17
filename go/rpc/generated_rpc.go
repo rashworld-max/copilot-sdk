@@ -220,10 +220,10 @@ type SessionFleetStartParams struct {
 
 type SessionAgentListResult struct {
 	// Available custom agents
-	Agents []AgentElement `json:"agents"`
+	Agents []SessionAgentListResultAgent `json:"agents"`
 }
 
-type AgentElement struct {
+type SessionAgentListResultAgent struct {
 	// Description of the agent's purpose
 	Description string `json:"description"`
 	// Human-readable display name
@@ -267,6 +267,147 @@ type SessionAgentSelectParams struct {
 }
 
 type SessionAgentDeselectResult struct {
+}
+
+type SessionAgentReloadResult struct {
+	// Reloaded custom agents
+	Agents []SessionAgentReloadResultAgent `json:"agents"`
+}
+
+type SessionAgentReloadResultAgent struct {
+	// Description of the agent's purpose
+	Description string `json:"description"`
+	// Human-readable display name
+	DisplayName string `json:"displayName"`
+	// Unique identifier of the custom agent
+	Name string `json:"name"`
+}
+
+type SessionSkillsListResult struct {
+	// Available skills
+	Skills []Skill `json:"skills"`
+}
+
+type Skill struct {
+	// Description of what the skill does
+	Description string `json:"description"`
+	// Whether the skill is currently enabled
+	Enabled bool `json:"enabled"`
+	// Unique identifier for the skill
+	Name string `json:"name"`
+	// Absolute path to the skill file
+	Path *string `json:"path,omitempty"`
+	// Source location type (e.g., project, personal, plugin)
+	Source string `json:"source"`
+	// Whether the skill can be invoked by the user as a slash command
+	UserInvocable bool `json:"userInvocable"`
+}
+
+type SessionSkillsEnableResult struct {
+}
+
+type SessionSkillsEnableParams struct {
+	// Name of the skill to enable
+	Name string `json:"name"`
+}
+
+type SessionSkillsDisableResult struct {
+}
+
+type SessionSkillsDisableParams struct {
+	// Name of the skill to disable
+	Name string `json:"name"`
+}
+
+type SessionSkillsReloadResult struct {
+}
+
+type SessionMCPListResult struct {
+	// Configured MCP servers
+	Servers []Server `json:"servers"`
+}
+
+type Server struct {
+	// Error message if the server failed to connect
+	Error *string `json:"error,omitempty"`
+	// Server name (config key)
+	Name string `json:"name"`
+	// Configuration source: user, workspace, plugin, or builtin
+	Source *string `json:"source,omitempty"`
+	// Connection status: connected, failed, pending, disabled, or not_configured
+	Status ServerStatus `json:"status"`
+}
+
+type SessionMCPEnableResult struct {
+}
+
+type SessionMCPEnableParams struct {
+	// Name of the MCP server to enable
+	ServerName string `json:"serverName"`
+}
+
+type SessionMCPDisableResult struct {
+}
+
+type SessionMCPDisableParams struct {
+	// Name of the MCP server to disable
+	ServerName string `json:"serverName"`
+}
+
+type SessionMCPReloadResult struct {
+}
+
+type SessionPluginsListResult struct {
+	// Installed plugins
+	Plugins []Plugin `json:"plugins"`
+}
+
+type Plugin struct {
+	// Whether the plugin is currently enabled
+	Enabled bool `json:"enabled"`
+	// Marketplace the plugin came from
+	Marketplace string `json:"marketplace"`
+	// Plugin name
+	Name string `json:"name"`
+	// Installed version
+	Version *string `json:"version,omitempty"`
+}
+
+type SessionExtensionsListResult struct {
+	// Discovered extensions and their current status
+	Extensions []Extension `json:"extensions"`
+}
+
+type Extension struct {
+	// Source-qualified ID (e.g., 'project:my-ext', 'user:auth-helper')
+	ID string `json:"id"`
+	// Extension name (directory name)
+	Name string `json:"name"`
+	// Process ID if the extension is running
+	PID *int64 `json:"pid,omitempty"`
+	// Discovery source: project (.github/extensions/) or user (~/.copilot/extensions/)
+	Source Source `json:"source"`
+	// Current status: running, disabled, failed, or starting
+	Status ExtensionStatus `json:"status"`
+}
+
+type SessionExtensionsEnableResult struct {
+}
+
+type SessionExtensionsEnableParams struct {
+	// Source-qualified extension ID to enable
+	ID string `json:"id"`
+}
+
+type SessionExtensionsDisableResult struct {
+}
+
+type SessionExtensionsDisableParams struct {
+	// Source-qualified extension ID to disable
+	ID string `json:"id"`
+}
+
+type SessionExtensionsReloadResult struct {
 }
 
 type SessionCompactionCompactResult struct {
@@ -327,6 +468,8 @@ type SessionLogParams struct {
 	Level *Level `json:"level,omitempty"`
 	// Human-readable message
 	Message string `json:"message"`
+	// Optional URL the user can open in their browser for more details
+	URL *string `json:"url,omitempty"`
 }
 
 type SessionShellExecResult struct {
@@ -366,6 +509,35 @@ const (
 	Autopilot   Mode = "autopilot"
 	Interactive Mode = "interactive"
 	Plan        Mode = "plan"
+)
+
+// Connection status: connected, failed, pending, disabled, or not_configured
+type ServerStatus string
+
+const (
+	Connected      ServerStatus = "connected"
+	NotConfigured  ServerStatus = "not_configured"
+	Pending        ServerStatus = "pending"
+	PurpleDisabled ServerStatus = "disabled"
+	PurpleFailed   ServerStatus = "failed"
+)
+
+// Discovery source: project (.github/extensions/) or user (~/.copilot/extensions/)
+type Source string
+
+const (
+	Project Source = "project"
+	User    Source = "user"
+)
+
+// Current status: running, disabled, failed, or starting
+type ExtensionStatus string
+
+const (
+	FluffyDisabled ExtensionStatus = "disabled"
+	FluffyFailed   ExtensionStatus = "failed"
+	Running        ExtensionStatus = "running"
+	Starting       ExtensionStatus = "starting"
 )
 
 type Kind string
@@ -724,6 +896,226 @@ func (a *AgentRpcApi) Deselect(ctx context.Context) (*SessionAgentDeselectResult
 	return &result, nil
 }
 
+func (a *AgentRpcApi) Reload(ctx context.Context) (*SessionAgentReloadResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	raw, err := a.client.Request("session.agent.reload", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionAgentReloadResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+type SkillsRpcApi struct {
+	client    *jsonrpc2.Client
+	sessionID string
+}
+
+func (a *SkillsRpcApi) List(ctx context.Context) (*SessionSkillsListResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	raw, err := a.client.Request("session.skills.list", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionSkillsListResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (a *SkillsRpcApi) Enable(ctx context.Context, params *SessionSkillsEnableParams) (*SessionSkillsEnableResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	if params != nil {
+		req["name"] = params.Name
+	}
+	raw, err := a.client.Request("session.skills.enable", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionSkillsEnableResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (a *SkillsRpcApi) Disable(ctx context.Context, params *SessionSkillsDisableParams) (*SessionSkillsDisableResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	if params != nil {
+		req["name"] = params.Name
+	}
+	raw, err := a.client.Request("session.skills.disable", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionSkillsDisableResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (a *SkillsRpcApi) Reload(ctx context.Context) (*SessionSkillsReloadResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	raw, err := a.client.Request("session.skills.reload", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionSkillsReloadResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+type McpRpcApi struct {
+	client    *jsonrpc2.Client
+	sessionID string
+}
+
+func (a *McpRpcApi) List(ctx context.Context) (*SessionMcpListResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	raw, err := a.client.Request("session.mcp.list", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionMcpListResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (a *McpRpcApi) Enable(ctx context.Context, params *SessionMcpEnableParams) (*SessionMcpEnableResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	if params != nil {
+		req["serverName"] = params.ServerName
+	}
+	raw, err := a.client.Request("session.mcp.enable", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionMcpEnableResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (a *McpRpcApi) Disable(ctx context.Context, params *SessionMcpDisableParams) (*SessionMcpDisableResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	if params != nil {
+		req["serverName"] = params.ServerName
+	}
+	raw, err := a.client.Request("session.mcp.disable", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionMcpDisableResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (a *McpRpcApi) Reload(ctx context.Context) (*SessionMcpReloadResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	raw, err := a.client.Request("session.mcp.reload", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionMcpReloadResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+type PluginsRpcApi struct {
+	client    *jsonrpc2.Client
+	sessionID string
+}
+
+func (a *PluginsRpcApi) List(ctx context.Context) (*SessionPluginsListResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	raw, err := a.client.Request("session.plugins.list", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionPluginsListResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+type ExtensionsRpcApi struct {
+	client    *jsonrpc2.Client
+	sessionID string
+}
+
+func (a *ExtensionsRpcApi) List(ctx context.Context) (*SessionExtensionsListResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	raw, err := a.client.Request("session.extensions.list", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionExtensionsListResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (a *ExtensionsRpcApi) Enable(ctx context.Context, params *SessionExtensionsEnableParams) (*SessionExtensionsEnableResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	if params != nil {
+		req["id"] = params.ID
+	}
+	raw, err := a.client.Request("session.extensions.enable", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionExtensionsEnableResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (a *ExtensionsRpcApi) Disable(ctx context.Context, params *SessionExtensionsDisableParams) (*SessionExtensionsDisableResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	if params != nil {
+		req["id"] = params.ID
+	}
+	raw, err := a.client.Request("session.extensions.disable", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionExtensionsDisableResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (a *ExtensionsRpcApi) Reload(ctx context.Context) (*SessionExtensionsReloadResult, error) {
+	req := map[string]interface{}{"sessionId": a.sessionID}
+	raw, err := a.client.Request("session.extensions.reload", req)
+	if err != nil {
+		return nil, err
+	}
+	var result SessionExtensionsReloadResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 type CompactionRpcApi struct {
 	client    *jsonrpc2.Client
 	sessionID string
@@ -847,6 +1239,10 @@ type SessionRpc struct {
 	Workspace   *WorkspaceRpcApi
 	Fleet       *FleetRpcApi
 	Agent       *AgentRpcApi
+	Skills      *SkillsRpcApi
+	Mcp         *McpRpcApi
+	Plugins     *PluginsRpcApi
+	Extensions  *ExtensionsRpcApi
 	Compaction  *CompactionRpcApi
 	Tools       *ToolsRpcApi
 	Permissions *PermissionsRpcApi
@@ -862,6 +1258,9 @@ func (a *SessionRpc) Log(ctx context.Context, params *SessionLogParams) (*Sessio
 		}
 		if params.Ephemeral != nil {
 			req["ephemeral"] = *params.Ephemeral
+		}
+		if params.URL != nil {
+			req["url"] = *params.URL
 		}
 	}
 	raw, err := a.client.Request("session.log", req)
@@ -883,6 +1282,10 @@ func NewSessionRpc(client *jsonrpc2.Client, sessionID string) *SessionRpc {
 		Workspace:   &WorkspaceRpcApi{client: client, sessionID: sessionID},
 		Fleet:       &FleetRpcApi{client: client, sessionID: sessionID},
 		Agent:       &AgentRpcApi{client: client, sessionID: sessionID},
+		Skills:      &SkillsRpcApi{client: client, sessionID: sessionID},
+		Mcp:         &McpRpcApi{client: client, sessionID: sessionID},
+		Plugins:     &PluginsRpcApi{client: client, sessionID: sessionID},
+		Extensions:  &ExtensionsRpcApi{client: client, sessionID: sessionID},
 		Compaction:  &CompactionRpcApi{client: client, sessionID: sessionID},
 		Tools:       &ToolsRpcApi{client: client, sessionID: sessionID},
 		Permissions: &PermissionsRpcApi{client: client, sessionID: sessionID},

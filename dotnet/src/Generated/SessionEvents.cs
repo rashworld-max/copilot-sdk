@@ -46,14 +46,18 @@ namespace GitHub.Copilot.SDK;
 [JsonDerivedType(typeof(SessionCompactionStartEvent), "session.compaction_start")]
 [JsonDerivedType(typeof(SessionContextChangedEvent), "session.context_changed")]
 [JsonDerivedType(typeof(SessionErrorEvent), "session.error")]
+[JsonDerivedType(typeof(SessionExtensionsLoadedEvent), "session.extensions_loaded")]
 [JsonDerivedType(typeof(SessionHandoffEvent), "session.handoff")]
 [JsonDerivedType(typeof(SessionIdleEvent), "session.idle")]
 [JsonDerivedType(typeof(SessionInfoEvent), "session.info")]
+[JsonDerivedType(typeof(SessionMcpServerStatusChangedEvent), "session.mcp_server_status_changed")]
+[JsonDerivedType(typeof(SessionMcpServersLoadedEvent), "session.mcp_servers_loaded")]
 [JsonDerivedType(typeof(SessionModeChangedEvent), "session.mode_changed")]
 [JsonDerivedType(typeof(SessionModelChangeEvent), "session.model_change")]
 [JsonDerivedType(typeof(SessionPlanChangedEvent), "session.plan_changed")]
 [JsonDerivedType(typeof(SessionResumeEvent), "session.resume")]
 [JsonDerivedType(typeof(SessionShutdownEvent), "session.shutdown")]
+[JsonDerivedType(typeof(SessionSkillsLoadedEvent), "session.skills_loaded")]
 [JsonDerivedType(typeof(SessionSnapshotRewindEvent), "session.snapshot_rewind")]
 [JsonDerivedType(typeof(SessionStartEvent), "session.start")]
 [JsonDerivedType(typeof(SessionTaskCompleteEvent), "session.task_complete")]
@@ -363,7 +367,7 @@ public partial class SessionCompactionCompleteEvent : SessionEvent
     public required SessionCompactionCompleteData Data { get; set; }
 }
 
-/// <summary>Task completion notification with optional summary from the agent.</summary>
+/// <summary>Task completion notification with summary from the agent.</summary>
 /// <remarks>Represents the <c>session.task_complete</c> event.</remarks>
 public partial class SessionTaskCompleteEvent : SessionEvent
 {
@@ -376,8 +380,7 @@ public partial class SessionTaskCompleteEvent : SessionEvent
     public required SessionTaskCompleteData Data { get; set; }
 }
 
-/// <summary>User message content with optional attachments, source information, and interaction metadata.</summary>
-/// <remarks>Represents the <c>user.message</c> event.</remarks>
+/// <summary>Represents the <c>user.message</c> event.</summary>
 public partial class UserMessageEvent : SessionEvent
 {
     /// <inheritdoc />
@@ -907,6 +910,54 @@ public partial class SessionBackgroundTasksChangedEvent : SessionEvent
     public required SessionBackgroundTasksChangedData Data { get; set; }
 }
 
+/// <summary>Represents the <c>session.skills_loaded</c> event.</summary>
+public partial class SessionSkillsLoadedEvent : SessionEvent
+{
+    /// <inheritdoc />
+    [JsonIgnore]
+    public override string Type => "session.skills_loaded";
+
+    /// <summary>The <c>session.skills_loaded</c> event payload.</summary>
+    [JsonPropertyName("data")]
+    public required SessionSkillsLoadedData Data { get; set; }
+}
+
+/// <summary>Represents the <c>session.mcp_servers_loaded</c> event.</summary>
+public partial class SessionMcpServersLoadedEvent : SessionEvent
+{
+    /// <inheritdoc />
+    [JsonIgnore]
+    public override string Type => "session.mcp_servers_loaded";
+
+    /// <summary>The <c>session.mcp_servers_loaded</c> event payload.</summary>
+    [JsonPropertyName("data")]
+    public required SessionMcpServersLoadedData Data { get; set; }
+}
+
+/// <summary>Represents the <c>session.mcp_server_status_changed</c> event.</summary>
+public partial class SessionMcpServerStatusChangedEvent : SessionEvent
+{
+    /// <inheritdoc />
+    [JsonIgnore]
+    public override string Type => "session.mcp_server_status_changed";
+
+    /// <summary>The <c>session.mcp_server_status_changed</c> event payload.</summary>
+    [JsonPropertyName("data")]
+    public required SessionMcpServerStatusChangedData Data { get; set; }
+}
+
+/// <summary>Represents the <c>session.extensions_loaded</c> event.</summary>
+public partial class SessionExtensionsLoadedEvent : SessionEvent
+{
+    /// <inheritdoc />
+    [JsonIgnore]
+    public override string Type => "session.extensions_loaded";
+
+    /// <summary>The <c>session.extensions_loaded</c> event payload.</summary>
+    [JsonPropertyName("data")]
+    public required SessionExtensionsLoadedData Data { get; set; }
+}
+
 /// <summary>Session initialization metadata including context and configuration.</summary>
 public partial class SessionStartData
 {
@@ -1008,6 +1059,11 @@ public partial class SessionErrorData
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("providerCallId")]
     public string? ProviderCallId { get; set; }
+
+    /// <summary>Optional URL associated with this error that the user can open in a browser.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
 }
 
 /// <summary>Payload indicating the agent is idle; includes any background tasks still in flight.</summary>
@@ -1037,6 +1093,11 @@ public partial class SessionInfoData
     /// <summary>Human-readable informational message for display in the timeline.</summary>
     [JsonPropertyName("message")]
     public required string Message { get; set; }
+
+    /// <summary>Optional URL associated with this message that the user can open in a browser.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
 }
 
 /// <summary>Warning message for timeline display with categorization.</summary>
@@ -1049,6 +1110,11 @@ public partial class SessionWarningData
     /// <summary>Human-readable warning message for display in the timeline.</summary>
     [JsonPropertyName("message")]
     public required string Message { get; set; }
+
+    /// <summary>Optional URL associated with this warning that the user can open in a browser.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
 }
 
 /// <summary>Model change details including previous and new model identifiers.</summary>
@@ -1346,16 +1412,16 @@ public partial class SessionCompactionCompleteData
     public string? RequestId { get; set; }
 }
 
-/// <summary>Task completion notification with optional summary from the agent.</summary>
+/// <summary>Task completion notification with summary from the agent.</summary>
 public partial class SessionTaskCompleteData
 {
-    /// <summary>Optional summary of the completed task, provided by the agent.</summary>
+    /// <summary>Summary of the completed task, provided by the agent.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("summary")]
     public string? Summary { get; set; }
 }
 
-/// <summary>User message content with optional attachments, source information, and interaction metadata.</summary>
+/// <summary>Event payload for <see cref="UserMessageEvent"/>.</summary>
 public partial class UserMessageData
 {
     /// <summary>The user's message text as displayed in the timeline.</summary>
@@ -1372,10 +1438,10 @@ public partial class UserMessageData
     [JsonPropertyName("attachments")]
     public UserMessageDataAttachmentsItem[]? Attachments { get; set; }
 
-    /// <summary>Origin of this message, used for timeline filtering and telemetry (e.g., "user", "autopilot", "skill", or "command").</summary>
+    /// <summary>Origin of this message, used for timeline filtering (e.g., "skill-pdf" for skill-injected messages that should be hidden from the user).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("source")]
-    public UserMessageDataSource? Source { get; set; }
+    public string? Source { get; set; }
 
     /// <summary>The agent mode that was active when this message was sent.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -1953,6 +2019,11 @@ public partial class UserInputRequestedData
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("allowFreeform")]
     public bool? AllowFreeform { get; set; }
+
+    /// <summary>The LLM-assigned tool call ID that triggered this request; used by remote UIs to correlate responses.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("toolCallId")]
+    public string? ToolCallId { get; set; }
 }
 
 /// <summary>User input request completion notification signaling UI dismissal.</summary>
@@ -2098,6 +2169,42 @@ public partial class SessionToolsUpdatedData
 /// <summary>Event payload for <see cref="SessionBackgroundTasksChangedEvent"/>.</summary>
 public partial class SessionBackgroundTasksChangedData
 {
+}
+
+/// <summary>Event payload for <see cref="SessionSkillsLoadedEvent"/>.</summary>
+public partial class SessionSkillsLoadedData
+{
+    /// <summary>Array of resolved skill metadata.</summary>
+    [JsonPropertyName("skills")]
+    public required SessionSkillsLoadedDataSkillsItem[] Skills { get; set; }
+}
+
+/// <summary>Event payload for <see cref="SessionMcpServersLoadedEvent"/>.</summary>
+public partial class SessionMcpServersLoadedData
+{
+    /// <summary>Array of MCP server status summaries.</summary>
+    [JsonPropertyName("servers")]
+    public required SessionMcpServersLoadedDataServersItem[] Servers { get; set; }
+}
+
+/// <summary>Event payload for <see cref="SessionMcpServerStatusChangedEvent"/>.</summary>
+public partial class SessionMcpServerStatusChangedData
+{
+    /// <summary>Name of the MCP server whose status changed.</summary>
+    [JsonPropertyName("serverName")]
+    public required string ServerName { get; set; }
+
+    /// <summary>New connection status: connected, failed, pending, disabled, or not_configured.</summary>
+    [JsonPropertyName("status")]
+    public required SessionMcpServersLoadedDataServersItemStatus Status { get; set; }
+}
+
+/// <summary>Event payload for <see cref="SessionExtensionsLoadedEvent"/>.</summary>
+public partial class SessionExtensionsLoadedData
+{
+    /// <summary>Array of discovered extensions and their status.</summary>
+    [JsonPropertyName("extensions")]
+    public required SessionExtensionsLoadedDataExtensionsItem[] Extensions { get; set; }
 }
 
 /// <summary>Working directory and git context at session start.</summary>
@@ -2787,6 +2894,27 @@ public partial class SystemNotificationDataKindAgentCompleted : SystemNotificati
     public string? Prompt { get; set; }
 }
 
+/// <summary>The <c>agent_idle</c> variant of <see cref="SystemNotificationDataKind"/>.</summary>
+public partial class SystemNotificationDataKindAgentIdle : SystemNotificationDataKind
+{
+    /// <inheritdoc />
+    [JsonIgnore]
+    public override string Type => "agent_idle";
+
+    /// <summary>Unique identifier of the background agent.</summary>
+    [JsonPropertyName("agentId")]
+    public required string AgentId { get; set; }
+
+    /// <summary>Type of the agent (e.g., explore, task, general-purpose).</summary>
+    [JsonPropertyName("agentType")]
+    public required string AgentType { get; set; }
+
+    /// <summary>Human-readable description of the agent task.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+}
+
 /// <summary>The <c>shell_completed</c> variant of <see cref="SystemNotificationDataKind"/>.</summary>
 public partial class SystemNotificationDataKindShellCompleted : SystemNotificationDataKind
 {
@@ -2832,6 +2960,7 @@ public partial class SystemNotificationDataKindShellDetachedCompleted : SystemNo
     TypeDiscriminatorPropertyName = "type",
     UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToBaseType)]
 [JsonDerivedType(typeof(SystemNotificationDataKindAgentCompleted), "agent_completed")]
+[JsonDerivedType(typeof(SystemNotificationDataKindAgentIdle), "agent_idle")]
 [JsonDerivedType(typeof(SystemNotificationDataKindShellCompleted), "shell_completed")]
 [JsonDerivedType(typeof(SystemNotificationDataKindShellDetachedCompleted), "shell_detached_completed")]
 public partial class SystemNotificationDataKind
@@ -3148,6 +3277,77 @@ public partial class ElicitationRequestedDataRequestedSchema
     public string[]? Required { get; set; }
 }
 
+/// <summary>Nested data type for <c>SessionSkillsLoadedDataSkillsItem</c>.</summary>
+public partial class SessionSkillsLoadedDataSkillsItem
+{
+    /// <summary>Unique identifier for the skill.</summary>
+    [JsonPropertyName("name")]
+    public required string Name { get; set; }
+
+    /// <summary>Description of what the skill does.</summary>
+    [JsonPropertyName("description")]
+    public required string Description { get; set; }
+
+    /// <summary>Source location type of the skill (e.g., project, personal, plugin).</summary>
+    [JsonPropertyName("source")]
+    public required string Source { get; set; }
+
+    /// <summary>Whether the skill can be invoked by the user as a slash command.</summary>
+    [JsonPropertyName("userInvocable")]
+    public required bool UserInvocable { get; set; }
+
+    /// <summary>Whether the skill is currently enabled.</summary>
+    [JsonPropertyName("enabled")]
+    public required bool Enabled { get; set; }
+
+    /// <summary>Absolute path to the skill file, if available.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("path")]
+    public string? Path { get; set; }
+}
+
+/// <summary>Nested data type for <c>SessionMcpServersLoadedDataServersItem</c>.</summary>
+public partial class SessionMcpServersLoadedDataServersItem
+{
+    /// <summary>Server name (config key).</summary>
+    [JsonPropertyName("name")]
+    public required string Name { get; set; }
+
+    /// <summary>Connection status: connected, failed, pending, disabled, or not_configured.</summary>
+    [JsonPropertyName("status")]
+    public required SessionMcpServersLoadedDataServersItemStatus Status { get; set; }
+
+    /// <summary>Configuration source: user, workspace, plugin, or builtin.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("source")]
+    public string? Source { get; set; }
+
+    /// <summary>Error message if the server failed to connect.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+}
+
+/// <summary>Nested data type for <c>SessionExtensionsLoadedDataExtensionsItem</c>.</summary>
+public partial class SessionExtensionsLoadedDataExtensionsItem
+{
+    /// <summary>Source-qualified extension ID (e.g., 'project:my-ext', 'user:auth-helper').</summary>
+    [JsonPropertyName("id")]
+    public required string Id { get; set; }
+
+    /// <summary>Extension name (directory name).</summary>
+    [JsonPropertyName("name")]
+    public required string Name { get; set; }
+
+    /// <summary>Discovery source.</summary>
+    [JsonPropertyName("source")]
+    public required SessionExtensionsLoadedDataExtensionsItemSource Source { get; set; }
+
+    /// <summary>Current status: running, disabled, failed, or starting.</summary>
+    [JsonPropertyName("status")]
+    public required SessionExtensionsLoadedDataExtensionsItemStatus Status { get; set; }
+}
+
 /// <summary>Hosting platform type of the repository (github or ado).</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<SessionStartDataContextHostType>))]
 public enum SessionStartDataContextHostType
@@ -3224,42 +3424,6 @@ public enum UserMessageDataAttachmentsItemGithubReferenceReferenceType
     /// <summary>The <c>discussion</c> variant.</summary>
     [JsonStringEnumMemberName("discussion")]
     Discussion,
-}
-
-/// <summary>Origin of this message, used for timeline filtering and telemetry (e.g., "user", "autopilot", "skill", or "command").</summary>
-[JsonConverter(typeof(JsonStringEnumConverter<UserMessageDataSource>))]
-public enum UserMessageDataSource
-{
-    /// <summary>The <c>user</c> variant.</summary>
-    [JsonStringEnumMemberName("user")]
-    User,
-    /// <summary>The <c>autopilot</c> variant.</summary>
-    [JsonStringEnumMemberName("autopilot")]
-    Autopilot,
-    /// <summary>The <c>skill</c> variant.</summary>
-    [JsonStringEnumMemberName("skill")]
-    Skill,
-    /// <summary>The <c>system</c> variant.</summary>
-    [JsonStringEnumMemberName("system")]
-    System,
-    /// <summary>The <c>command</c> variant.</summary>
-    [JsonStringEnumMemberName("command")]
-    Command,
-    /// <summary>The <c>immediate-prompt</c> variant.</summary>
-    [JsonStringEnumMemberName("immediate-prompt")]
-    ImmediatePrompt,
-    /// <summary>The <c>jit-instruction</c> variant.</summary>
-    [JsonStringEnumMemberName("jit-instruction")]
-    JitInstruction,
-    /// <summary>The <c>snippy-blocking</c> variant.</summary>
-    [JsonStringEnumMemberName("snippy-blocking")]
-    SnippyBlocking,
-    /// <summary>The <c>thinking-exhausted-continuation</c> variant.</summary>
-    [JsonStringEnumMemberName("thinking-exhausted-continuation")]
-    ThinkingExhaustedContinuation,
-    /// <summary>The <c>other</c> variant.</summary>
-    [JsonStringEnumMemberName("other")]
-    Other,
 }
 
 /// <summary>The agent mode that was active when this message was sent.</summary>
@@ -3349,6 +3513,57 @@ public enum PermissionCompletedDataResultKind
     DeniedByContentExclusionPolicy,
 }
 
+/// <summary>Connection status: connected, failed, pending, disabled, or not_configured.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<SessionMcpServersLoadedDataServersItemStatus>))]
+public enum SessionMcpServersLoadedDataServersItemStatus
+{
+    /// <summary>The <c>connected</c> variant.</summary>
+    [JsonStringEnumMemberName("connected")]
+    Connected,
+    /// <summary>The <c>failed</c> variant.</summary>
+    [JsonStringEnumMemberName("failed")]
+    Failed,
+    /// <summary>The <c>pending</c> variant.</summary>
+    [JsonStringEnumMemberName("pending")]
+    Pending,
+    /// <summary>The <c>disabled</c> variant.</summary>
+    [JsonStringEnumMemberName("disabled")]
+    Disabled,
+    /// <summary>The <c>not_configured</c> variant.</summary>
+    [JsonStringEnumMemberName("not_configured")]
+    NotConfigured,
+}
+
+/// <summary>Discovery source.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<SessionExtensionsLoadedDataExtensionsItemSource>))]
+public enum SessionExtensionsLoadedDataExtensionsItemSource
+{
+    /// <summary>The <c>project</c> variant.</summary>
+    [JsonStringEnumMemberName("project")]
+    Project,
+    /// <summary>The <c>user</c> variant.</summary>
+    [JsonStringEnumMemberName("user")]
+    User,
+}
+
+/// <summary>Current status: running, disabled, failed, or starting.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<SessionExtensionsLoadedDataExtensionsItemStatus>))]
+public enum SessionExtensionsLoadedDataExtensionsItemStatus
+{
+    /// <summary>The <c>running</c> variant.</summary>
+    [JsonStringEnumMemberName("running")]
+    Running,
+    /// <summary>The <c>disabled</c> variant.</summary>
+    [JsonStringEnumMemberName("disabled")]
+    Disabled,
+    /// <summary>The <c>failed</c> variant.</summary>
+    [JsonStringEnumMemberName("failed")]
+    Failed,
+    /// <summary>The <c>starting</c> variant.</summary>
+    [JsonStringEnumMemberName("starting")]
+    Starting,
+}
+
 [JsonSourceGenerationOptions(
     JsonSerializerDefaults.Web,
     AllowOutOfOrderMetadataProperties = true,
@@ -3429,6 +3644,9 @@ public enum PermissionCompletedDataResultKind
 [JsonSerializable(typeof(SessionErrorData))]
 [JsonSerializable(typeof(SessionErrorEvent))]
 [JsonSerializable(typeof(SessionEvent))]
+[JsonSerializable(typeof(SessionExtensionsLoadedData))]
+[JsonSerializable(typeof(SessionExtensionsLoadedDataExtensionsItem))]
+[JsonSerializable(typeof(SessionExtensionsLoadedEvent))]
 [JsonSerializable(typeof(SessionHandoffData))]
 [JsonSerializable(typeof(SessionHandoffDataRepository))]
 [JsonSerializable(typeof(SessionHandoffEvent))]
@@ -3439,6 +3657,11 @@ public enum PermissionCompletedDataResultKind
 [JsonSerializable(typeof(SessionIdleEvent))]
 [JsonSerializable(typeof(SessionInfoData))]
 [JsonSerializable(typeof(SessionInfoEvent))]
+[JsonSerializable(typeof(SessionMcpServerStatusChangedData))]
+[JsonSerializable(typeof(SessionMcpServerStatusChangedEvent))]
+[JsonSerializable(typeof(SessionMcpServersLoadedData))]
+[JsonSerializable(typeof(SessionMcpServersLoadedDataServersItem))]
+[JsonSerializable(typeof(SessionMcpServersLoadedEvent))]
 [JsonSerializable(typeof(SessionModeChangedData))]
 [JsonSerializable(typeof(SessionModeChangedEvent))]
 [JsonSerializable(typeof(SessionModelChangeData))]
@@ -3451,6 +3674,9 @@ public enum PermissionCompletedDataResultKind
 [JsonSerializable(typeof(SessionShutdownData))]
 [JsonSerializable(typeof(SessionShutdownDataCodeChanges))]
 [JsonSerializable(typeof(SessionShutdownEvent))]
+[JsonSerializable(typeof(SessionSkillsLoadedData))]
+[JsonSerializable(typeof(SessionSkillsLoadedDataSkillsItem))]
+[JsonSerializable(typeof(SessionSkillsLoadedEvent))]
 [JsonSerializable(typeof(SessionSnapshotRewindData))]
 [JsonSerializable(typeof(SessionSnapshotRewindEvent))]
 [JsonSerializable(typeof(SessionStartData))]
@@ -3488,6 +3714,7 @@ public enum PermissionCompletedDataResultKind
 [JsonSerializable(typeof(SystemNotificationData))]
 [JsonSerializable(typeof(SystemNotificationDataKind))]
 [JsonSerializable(typeof(SystemNotificationDataKindAgentCompleted))]
+[JsonSerializable(typeof(SystemNotificationDataKindAgentIdle))]
 [JsonSerializable(typeof(SystemNotificationDataKindShellCompleted))]
 [JsonSerializable(typeof(SystemNotificationDataKindShellDetachedCompleted))]
 [JsonSerializable(typeof(SystemNotificationEvent))]

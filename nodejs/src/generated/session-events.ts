@@ -212,6 +212,10 @@ export type SessionEvent =
          * GitHub request tracing ID (x-github-request-id header) for correlating with server-side logs
          */
         providerCallId?: string;
+        /**
+         * Optional URL associated with this error that the user can open in a browser
+         */
+        url?: string;
       };
     }
   | {
@@ -325,6 +329,10 @@ export type SessionEvent =
          * Human-readable informational message for display in the timeline
          */
         message: string;
+        /**
+         * Optional URL associated with this message that the user can open in a browser
+         */
+        url?: string;
       };
     }
   | {
@@ -357,6 +365,10 @@ export type SessionEvent =
          * Human-readable warning message for display in the timeline
          */
         message: string;
+        /**
+         * Optional URL associated with this warning that the user can open in a browser
+         */
+        url?: string;
       };
     }
   | {
@@ -955,11 +967,11 @@ export type SessionEvent =
       ephemeral?: boolean;
       type: "session.task_complete";
       /**
-       * Task completion notification with optional summary from the agent
+       * Task completion notification with summary from the agent
        */
       data: {
         /**
-         * Optional summary of the completed task, provided by the agent
+         * Summary of the completed task, provided by the agent
          */
         summary?: string;
       };
@@ -982,9 +994,6 @@ export type SessionEvent =
        */
       ephemeral?: boolean;
       type: "user.message";
-      /**
-       * User message content with optional attachments, source information, and interaction metadata
-       */
       data: {
         /**
          * The user's message text as displayed in the timeline
@@ -1134,19 +1143,9 @@ export type SessionEvent =
             }
         )[];
         /**
-         * Origin of this message, used for timeline filtering and telemetry (e.g., "user", "autopilot", "skill", or "command")
+         * Origin of this message, used for timeline filtering (e.g., "skill-pdf" for skill-injected messages that should be hidden from the user)
          */
-        source?:
-          | "user"
-          | "autopilot"
-          | "skill"
-          | "system"
-          | "command"
-          | "immediate-prompt"
-          | "jit-instruction"
-          | "snippy-blocking"
-          | "thinking-exhausted-continuation"
-          | "other";
+        source?: string;
         /**
          * The agent mode that was active when this message was sent
          */
@@ -2435,6 +2434,21 @@ export type SessionEvent =
               prompt?: string;
             }
           | {
+              type: "agent_idle";
+              /**
+               * Unique identifier of the background agent
+               */
+              agentId: string;
+              /**
+               * Type of the agent (e.g., explore, task, general-purpose)
+               */
+              agentType: string;
+              /**
+               * Human-readable description of the agent task
+               */
+              description?: string;
+            }
+          | {
               type: "shell_completed";
               /**
                * Unique identifier of the shell session
@@ -2785,6 +2799,10 @@ export type SessionEvent =
          * Whether the user can provide a free-form text response in addition to predefined choices
          */
         allowFreeform?: boolean;
+        /**
+         * The LLM-assigned tool call ID that triggered this request; used by remote UIs to correlate responses
+         */
+        toolCallId?: string;
       };
     }
   | {
@@ -3121,4 +3139,155 @@ export type SessionEvent =
       ephemeral: true;
       type: "session.background_tasks_changed";
       data: {};
+    }
+  | {
+      /**
+       * Unique event identifier (UUID v4), generated when the event is emitted
+       */
+      id: string;
+      /**
+       * ISO 8601 timestamp when the event was created
+       */
+      timestamp: string;
+      /**
+       * ID of the chronologically preceding event in the session, forming a linked chain. Null for the first event.
+       */
+      parentId: string | null;
+      ephemeral: true;
+      type: "session.skills_loaded";
+      data: {
+        /**
+         * Array of resolved skill metadata
+         */
+        skills: {
+          /**
+           * Unique identifier for the skill
+           */
+          name: string;
+          /**
+           * Description of what the skill does
+           */
+          description: string;
+          /**
+           * Source location type of the skill (e.g., project, personal, plugin)
+           */
+          source: string;
+          /**
+           * Whether the skill can be invoked by the user as a slash command
+           */
+          userInvocable: boolean;
+          /**
+           * Whether the skill is currently enabled
+           */
+          enabled: boolean;
+          /**
+           * Absolute path to the skill file, if available
+           */
+          path?: string;
+        }[];
+      };
+    }
+  | {
+      /**
+       * Unique event identifier (UUID v4), generated when the event is emitted
+       */
+      id: string;
+      /**
+       * ISO 8601 timestamp when the event was created
+       */
+      timestamp: string;
+      /**
+       * ID of the chronologically preceding event in the session, forming a linked chain. Null for the first event.
+       */
+      parentId: string | null;
+      ephemeral: true;
+      type: "session.mcp_servers_loaded";
+      data: {
+        /**
+         * Array of MCP server status summaries
+         */
+        servers: {
+          /**
+           * Server name (config key)
+           */
+          name: string;
+          /**
+           * Connection status: connected, failed, pending, disabled, or not_configured
+           */
+          status: "connected" | "failed" | "pending" | "disabled" | "not_configured";
+          /**
+           * Configuration source: user, workspace, plugin, or builtin
+           */
+          source?: string;
+          /**
+           * Error message if the server failed to connect
+           */
+          error?: string;
+        }[];
+      };
+    }
+  | {
+      /**
+       * Unique event identifier (UUID v4), generated when the event is emitted
+       */
+      id: string;
+      /**
+       * ISO 8601 timestamp when the event was created
+       */
+      timestamp: string;
+      /**
+       * ID of the chronologically preceding event in the session, forming a linked chain. Null for the first event.
+       */
+      parentId: string | null;
+      ephemeral: true;
+      type: "session.mcp_server_status_changed";
+      data: {
+        /**
+         * Name of the MCP server whose status changed
+         */
+        serverName: string;
+        /**
+         * New connection status: connected, failed, pending, disabled, or not_configured
+         */
+        status: "connected" | "failed" | "pending" | "disabled" | "not_configured";
+      };
+    }
+  | {
+      /**
+       * Unique event identifier (UUID v4), generated when the event is emitted
+       */
+      id: string;
+      /**
+       * ISO 8601 timestamp when the event was created
+       */
+      timestamp: string;
+      /**
+       * ID of the chronologically preceding event in the session, forming a linked chain. Null for the first event.
+       */
+      parentId: string | null;
+      ephemeral: true;
+      type: "session.extensions_loaded";
+      data: {
+        /**
+         * Array of discovered extensions and their status
+         */
+        extensions: {
+          /**
+           * Source-qualified extension ID (e.g., 'project:my-ext', 'user:auth-helper')
+           */
+          id: string;
+          /**
+           * Extension name (directory name)
+           */
+          name: string;
+          /**
+           * Discovery source
+           */
+          source: "project" | "user";
+          /**
+           * Current status: running, disabled, failed, or starting
+           */
+          status: "running" | "disabled" | "failed" | "starting";
+        }[];
+      };
     };

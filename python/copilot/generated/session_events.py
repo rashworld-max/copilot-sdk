@@ -605,7 +605,55 @@ class ErrorClass:
         return result
 
 
-class Status(Enum):
+class Source(Enum):
+    """Discovery source"""
+
+    PROJECT = "project"
+    USER = "user"
+
+
+class ExtensionStatus(Enum):
+    """Current status: running, disabled, failed, or starting"""
+
+    DISABLED = "disabled"
+    FAILED = "failed"
+    RUNNING = "running"
+    STARTING = "starting"
+
+
+@dataclass
+class Extension:
+    id: str
+    """Source-qualified extension ID (e.g., 'project:my-ext', 'user:auth-helper')"""
+
+    name: str
+    """Extension name (directory name)"""
+
+    source: Source
+    """Discovery source"""
+
+    status: ExtensionStatus
+    """Current status: running, disabled, failed, or starting"""
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'Extension':
+        assert isinstance(obj, dict)
+        id = from_str(obj.get("id"))
+        name = from_str(obj.get("name"))
+        source = Source(obj.get("source"))
+        status = ExtensionStatus(obj.get("status"))
+        return Extension(id, name, source, status)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["id"] = from_str(self.id)
+        result["name"] = from_str(self.name)
+        result["source"] = to_enum(Source, self.source)
+        result["status"] = to_enum(ExtensionStatus, self.status)
+        return result
+
+
+class KindStatus(Enum):
     """Whether the agent completed successfully or failed"""
 
     COMPLETED = "completed"
@@ -614,6 +662,7 @@ class Status(Enum):
 
 class KindType(Enum):
     AGENT_COMPLETED = "agent_completed"
+    AGENT_IDLE = "agent_idle"
     SHELL_COMPLETED = "shell_completed"
     SHELL_DETACHED_COMPLETED = "shell_detached_completed"
 
@@ -637,7 +686,7 @@ class KindClass:
     prompt: str | None = None
     """The full prompt given to the background agent"""
 
-    status: Status | None = None
+    status: KindStatus | None = None
     """Whether the agent completed successfully or failed"""
 
     exit_code: float | None = None
@@ -657,7 +706,7 @@ class KindClass:
         agent_type = from_union([from_str, from_none], obj.get("agentType"))
         description = from_union([from_str, from_none], obj.get("description"))
         prompt = from_union([from_str, from_none], obj.get("prompt"))
-        status = from_union([Status, from_none], obj.get("status"))
+        status = from_union([KindStatus, from_none], obj.get("status"))
         exit_code = from_union([from_float, from_none], obj.get("exitCode"))
         shell_id = from_union([from_str, from_none], obj.get("shellId"))
         return KindClass(type, agent_id, agent_type, description, prompt, status, exit_code, shell_id)
@@ -674,7 +723,7 @@ class KindClass:
         if self.prompt is not None:
             result["prompt"] = from_union([from_str, from_none], self.prompt)
         if self.status is not None:
-            result["status"] = from_union([lambda x: to_enum(Status, x), from_none], self.status)
+            result["status"] = from_union([lambda x: to_enum(KindStatus, x), from_none], self.status)
         if self.exit_code is not None:
             result["exitCode"] = from_union([to_float, from_none], self.exit_code)
         if self.shell_id is not None:
@@ -1430,6 +1479,52 @@ class Role(Enum):
     SYSTEM = "system"
 
 
+class ServerStatus(Enum):
+    """Connection status: connected, failed, pending, disabled, or not_configured
+    
+    New connection status: connected, failed, pending, disabled, or not_configured
+    """
+    CONNECTED = "connected"
+    DISABLED = "disabled"
+    FAILED = "failed"
+    NOT_CONFIGURED = "not_configured"
+    PENDING = "pending"
+
+
+@dataclass
+class Server:
+    name: str
+    """Server name (config key)"""
+
+    status: ServerStatus
+    """Connection status: connected, failed, pending, disabled, or not_configured"""
+
+    error: str | None = None
+    """Error message if the server failed to connect"""
+
+    source: str | None = None
+    """Configuration source: user, workspace, plugin, or builtin"""
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'Server':
+        assert isinstance(obj, dict)
+        name = from_str(obj.get("name"))
+        status = ServerStatus(obj.get("status"))
+        error = from_union([from_str, from_none], obj.get("error"))
+        source = from_union([from_str, from_none], obj.get("source"))
+        return Server(name, status, error, source)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["name"] = from_str(self.name)
+        result["status"] = to_enum(ServerStatus, self.status)
+        if self.error is not None:
+            result["error"] = from_union([from_str, from_none], self.error)
+        if self.source is not None:
+            result["source"] = from_union([from_str, from_none], self.source)
+        return result
+
+
 class ShutdownType(Enum):
     """Whether the session ended normally ("routine") or due to a crash/fatal error ("error")"""
 
@@ -1437,20 +1532,47 @@ class ShutdownType(Enum):
     ROUTINE = "routine"
 
 
-class Source(Enum):
-    """Origin of this message, used for timeline filtering and telemetry (e.g., "user",
-    "autopilot", "skill", or "command")
-    """
-    AUTOPILOT = "autopilot"
-    COMMAND = "command"
-    IMMEDIATE_PROMPT = "immediate-prompt"
-    JIT_INSTRUCTION = "jit-instruction"
-    OTHER = "other"
-    SKILL = "skill"
-    SNIPPY_BLOCKING = "snippy-blocking"
-    SYSTEM = "system"
-    THINKING_EXHAUSTED_CONTINUATION = "thinking-exhausted-continuation"
-    USER = "user"
+@dataclass
+class Skill:
+    description: str
+    """Description of what the skill does"""
+
+    enabled: bool
+    """Whether the skill is currently enabled"""
+
+    name: str
+    """Unique identifier for the skill"""
+
+    source: str
+    """Source location type of the skill (e.g., project, personal, plugin)"""
+
+    user_invocable: bool
+    """Whether the skill can be invoked by the user as a slash command"""
+
+    path: str | None = None
+    """Absolute path to the skill file, if available"""
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'Skill':
+        assert isinstance(obj, dict)
+        description = from_str(obj.get("description"))
+        enabled = from_bool(obj.get("enabled"))
+        name = from_str(obj.get("name"))
+        source = from_str(obj.get("source"))
+        user_invocable = from_bool(obj.get("userInvocable"))
+        path = from_union([from_str, from_none], obj.get("path"))
+        return Skill(description, enabled, name, source, user_invocable, path)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["description"] = from_str(self.description)
+        result["enabled"] = from_bool(self.enabled)
+        result["name"] = from_str(self.name)
+        result["source"] = from_str(self.source)
+        result["userInvocable"] = from_bool(self.user_invocable)
+        if self.path is not None:
+            result["path"] = from_union([from_str, from_none], self.path)
+        return result
 
 
 class SourceType(Enum):
@@ -1560,10 +1682,7 @@ class Data:
     Conversation compaction results including success status, metrics, and optional error
     details
     
-    Task completion notification with optional summary from the agent
-    
-    User message content with optional attachments, source information, and interaction
-    metadata
+    Task completion notification with summary from the agent
     
     Empty payload; the event signals that the pending message queue has changed
     
@@ -1716,6 +1835,13 @@ class Data:
     status_code: int | None = None
     """HTTP status code from the upstream request, if applicable"""
 
+    url: str | None = None
+    """Optional URL associated with this error that the user can open in a browser
+    
+    Optional URL associated with this message that the user can open in a browser
+    
+    Optional URL associated with this warning that the user can open in a browser
+    """
     background_tasks: BackgroundTasks | None = None
     """Background tasks still running when the agent became idle"""
 
@@ -1772,7 +1898,7 @@ class Data:
     summary: str | None = None
     """Summary of the work done in the source session
     
-    Optional summary of the completed task, provided by the agent
+    Summary of the completed task, provided by the agent
     
     Summary of the plan that was created
     """
@@ -1961,9 +2087,9 @@ class Data:
     
     CAPI interaction ID for correlating this tool execution with upstream telemetry
     """
-    source: Source | None = None
-    """Origin of this message, used for timeline filtering and telemetry (e.g., "user",
-    "autopilot", "skill", or "command")
+    source: str | None = None
+    """Origin of this message, used for timeline filtering (e.g., "skill-pdf" for skill-injected
+    messages that should be hidden from the user)
     """
     transformed_content: str | None = None
     """Transformed version of the message sent to the model, with XML wrapping, timestamps, and
@@ -2076,6 +2202,9 @@ class Data:
     Unique identifier for the completed tool call
     
     Tool call ID of the parent tool invocation that spawned this sub-agent
+    
+    The LLM-assigned tool call ID that triggered this request; used by remote UIs to
+    correlate responses
     
     Tool call ID assigned to this external tool invocation
     """
@@ -2200,6 +2329,21 @@ class Data:
     recommended_action: str | None = None
     """The recommended action for the user to take"""
 
+    skills: list[Skill] | None = None
+    """Array of resolved skill metadata"""
+
+    servers: list[Server] | None = None
+    """Array of MCP server status summaries"""
+
+    server_name: str | None = None
+    """Name of the MCP server whose status changed"""
+
+    status: ServerStatus | None = None
+    """New connection status: connected, failed, pending, disabled, or not_configured"""
+
+    extensions: list[Extension] | None = None
+    """Array of discovered extensions and their status"""
+
     @staticmethod
     def from_dict(obj: Any) -> 'Data':
         assert isinstance(obj, dict)
@@ -2219,6 +2363,7 @@ class Data:
         provider_call_id = from_union([from_str, from_none], obj.get("providerCallId"))
         stack = from_union([from_str, from_none], obj.get("stack"))
         status_code = from_union([from_int, from_none], obj.get("statusCode"))
+        url = from_union([from_str, from_none], obj.get("url"))
         background_tasks = from_union([BackgroundTasks.from_dict, from_none], obj.get("backgroundTasks"))
         title = from_union([from_str, from_none], obj.get("title"))
         info_type = from_union([from_str, from_none], obj.get("infoType"))
@@ -2277,7 +2422,7 @@ class Data:
         attachments = from_union([lambda x: from_list(Attachment.from_dict, x), from_none], obj.get("attachments"))
         content = from_union([from_str, from_none], obj.get("content"))
         interaction_id = from_union([from_str, from_none], obj.get("interactionId"))
-        source = from_union([Source, from_none], obj.get("source"))
+        source = from_union([from_str, from_none], obj.get("source"))
         transformed_content = from_union([from_str, from_none], obj.get("transformedContent"))
         turn_id = from_union([from_str, from_none], obj.get("turnId"))
         intent = from_union([from_str, from_none], obj.get("intent"))
@@ -2340,7 +2485,12 @@ class Data:
         actions = from_union([lambda x: from_list(from_str, x), from_none], obj.get("actions"))
         plan_content = from_union([from_str, from_none], obj.get("planContent"))
         recommended_action = from_union([from_str, from_none], obj.get("recommendedAction"))
-        return Data(already_in_use, context, copilot_version, producer, reasoning_effort, selected_model, session_id, start_time, version, event_count, resume_time, error_type, message, provider_call_id, stack, status_code, background_tasks, title, info_type, warning_type, new_model, previous_model, previous_reasoning_effort, new_mode, previous_mode, operation, path, handoff_time, remote_session_id, repository, source_type, summary, messages_removed_during_truncation, performed_by, post_truncation_messages_length, post_truncation_tokens_in_messages, pre_truncation_messages_length, pre_truncation_tokens_in_messages, token_limit, tokens_removed_during_truncation, events_removed, up_to_event_id, code_changes, current_model, error_reason, model_metrics, session_start_time, shutdown_type, total_api_duration_ms, total_premium_requests, base_commit, branch, cwd, git_root, head_commit, host_type, current_tokens, messages_length, checkpoint_number, checkpoint_path, compaction_tokens_used, error, messages_removed, post_compaction_tokens, pre_compaction_messages_length, pre_compaction_tokens, request_id, success, summary_content, tokens_removed, agent_mode, attachments, content, interaction_id, source, transformed_content, turn_id, intent, reasoning_id, delta_content, total_response_size_bytes, encrypted_content, message_id, output_tokens, parent_tool_call_id, phase, reasoning_opaque, reasoning_text, tool_requests, api_call_id, cache_read_tokens, cache_write_tokens, copilot_usage, cost, duration, initiator, input_tokens, model, quota_snapshots, reason, arguments, tool_call_id, tool_name, mcp_server_name, mcp_tool_name, partial_output, progress_message, is_user_requested, result, tool_telemetry, allowed_tools, name, plugin_name, plugin_version, agent_description, agent_display_name, agent_name, tools, hook_invocation_id, hook_type, input, output, metadata, role, kind, permission_request, allow_freeform, choices, question, mode, requested_schema, traceparent, tracestate, command, actions, plan_content, recommended_action)
+        skills = from_union([lambda x: from_list(Skill.from_dict, x), from_none], obj.get("skills"))
+        servers = from_union([lambda x: from_list(Server.from_dict, x), from_none], obj.get("servers"))
+        server_name = from_union([from_str, from_none], obj.get("serverName"))
+        status = from_union([ServerStatus, from_none], obj.get("status"))
+        extensions = from_union([lambda x: from_list(Extension.from_dict, x), from_none], obj.get("extensions"))
+        return Data(already_in_use, context, copilot_version, producer, reasoning_effort, selected_model, session_id, start_time, version, event_count, resume_time, error_type, message, provider_call_id, stack, status_code, url, background_tasks, title, info_type, warning_type, new_model, previous_model, previous_reasoning_effort, new_mode, previous_mode, operation, path, handoff_time, remote_session_id, repository, source_type, summary, messages_removed_during_truncation, performed_by, post_truncation_messages_length, post_truncation_tokens_in_messages, pre_truncation_messages_length, pre_truncation_tokens_in_messages, token_limit, tokens_removed_during_truncation, events_removed, up_to_event_id, code_changes, current_model, error_reason, model_metrics, session_start_time, shutdown_type, total_api_duration_ms, total_premium_requests, base_commit, branch, cwd, git_root, head_commit, host_type, current_tokens, messages_length, checkpoint_number, checkpoint_path, compaction_tokens_used, error, messages_removed, post_compaction_tokens, pre_compaction_messages_length, pre_compaction_tokens, request_id, success, summary_content, tokens_removed, agent_mode, attachments, content, interaction_id, source, transformed_content, turn_id, intent, reasoning_id, delta_content, total_response_size_bytes, encrypted_content, message_id, output_tokens, parent_tool_call_id, phase, reasoning_opaque, reasoning_text, tool_requests, api_call_id, cache_read_tokens, cache_write_tokens, copilot_usage, cost, duration, initiator, input_tokens, model, quota_snapshots, reason, arguments, tool_call_id, tool_name, mcp_server_name, mcp_tool_name, partial_output, progress_message, is_user_requested, result, tool_telemetry, allowed_tools, name, plugin_name, plugin_version, agent_description, agent_display_name, agent_name, tools, hook_invocation_id, hook_type, input, output, metadata, role, kind, permission_request, allow_freeform, choices, question, mode, requested_schema, traceparent, tracestate, command, actions, plan_content, recommended_action, skills, servers, server_name, status, extensions)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -2376,6 +2526,8 @@ class Data:
             result["stack"] = from_union([from_str, from_none], self.stack)
         if self.status_code is not None:
             result["statusCode"] = from_union([from_int, from_none], self.status_code)
+        if self.url is not None:
+            result["url"] = from_union([from_str, from_none], self.url)
         if self.background_tasks is not None:
             result["backgroundTasks"] = from_union([lambda x: to_class(BackgroundTasks, x), from_none], self.background_tasks)
         if self.title is not None:
@@ -2493,7 +2645,7 @@ class Data:
         if self.interaction_id is not None:
             result["interactionId"] = from_union([from_str, from_none], self.interaction_id)
         if self.source is not None:
-            result["source"] = from_union([lambda x: to_enum(Source, x), from_none], self.source)
+            result["source"] = from_union([from_str, from_none], self.source)
         if self.transformed_content is not None:
             result["transformedContent"] = from_union([from_str, from_none], self.transformed_content)
         if self.turn_id is not None:
@@ -2618,6 +2770,16 @@ class Data:
             result["planContent"] = from_union([from_str, from_none], self.plan_content)
         if self.recommended_action is not None:
             result["recommendedAction"] = from_union([from_str, from_none], self.recommended_action)
+        if self.skills is not None:
+            result["skills"] = from_union([lambda x: from_list(lambda x: to_class(Skill, x), x), from_none], self.skills)
+        if self.servers is not None:
+            result["servers"] = from_union([lambda x: from_list(lambda x: to_class(Server, x), x), from_none], self.servers)
+        if self.server_name is not None:
+            result["serverName"] = from_union([from_str, from_none], self.server_name)
+        if self.status is not None:
+            result["status"] = from_union([lambda x: to_enum(ServerStatus, x), from_none], self.status)
+        if self.extensions is not None:
+            result["extensions"] = from_union([lambda x: from_list(lambda x: to_class(Extension, x), x), from_none], self.extensions)
         return result
 
 
@@ -2650,14 +2812,18 @@ class SessionEventType(Enum):
     SESSION_COMPACTION_START = "session.compaction_start"
     SESSION_CONTEXT_CHANGED = "session.context_changed"
     SESSION_ERROR = "session.error"
+    SESSION_EXTENSIONS_LOADED = "session.extensions_loaded"
     SESSION_HANDOFF = "session.handoff"
     SESSION_IDLE = "session.idle"
     SESSION_INFO = "session.info"
+    SESSION_MCP_SERVERS_LOADED = "session.mcp_servers_loaded"
+    SESSION_MCP_SERVER_STATUS_CHANGED = "session.mcp_server_status_changed"
     SESSION_MODEL_CHANGE = "session.model_change"
     SESSION_MODE_CHANGED = "session.mode_changed"
     SESSION_PLAN_CHANGED = "session.plan_changed"
     SESSION_RESUME = "session.resume"
     SESSION_SHUTDOWN = "session.shutdown"
+    SESSION_SKILLS_LOADED = "session.skills_loaded"
     SESSION_SNAPSHOT_REWIND = "session.snapshot_rewind"
     SESSION_START = "session.start"
     SESSION_TASK_COMPLETE = "session.task_complete"
@@ -2736,10 +2902,7 @@ class SessionEvent:
     Conversation compaction results including success status, metrics, and optional error
     details
     
-    Task completion notification with optional summary from the agent
-    
-    User message content with optional attachments, source information, and interaction
-    metadata
+    Task completion notification with summary from the agent
     
     Empty payload; the event signals that the pending message queue has changed
     

@@ -452,6 +452,274 @@ export interface SessionAgentDeselectParams {
   sessionId: string;
 }
 
+export interface SessionAgentReloadResult {
+  /**
+   * Reloaded custom agents
+   */
+  agents: {
+    /**
+     * Unique identifier of the custom agent
+     */
+    name: string;
+    /**
+     * Human-readable display name
+     */
+    displayName: string;
+    /**
+     * Description of the agent's purpose
+     */
+    description: string;
+  }[];
+}
+
+export interface SessionAgentReloadParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+}
+
+export interface SessionSkillsListResult {
+  /**
+   * Available skills
+   */
+  skills: {
+    /**
+     * Unique identifier for the skill
+     */
+    name: string;
+    /**
+     * Description of what the skill does
+     */
+    description: string;
+    /**
+     * Source location type (e.g., project, personal, plugin)
+     */
+    source: string;
+    /**
+     * Whether the skill can be invoked by the user as a slash command
+     */
+    userInvocable: boolean;
+    /**
+     * Whether the skill is currently enabled
+     */
+    enabled: boolean;
+    /**
+     * Absolute path to the skill file
+     */
+    path?: string;
+  }[];
+}
+
+export interface SessionSkillsListParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+}
+
+export interface SessionSkillsEnableResult {}
+
+export interface SessionSkillsEnableParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+  /**
+   * Name of the skill to enable
+   */
+  name: string;
+}
+
+export interface SessionSkillsDisableResult {}
+
+export interface SessionSkillsDisableParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+  /**
+   * Name of the skill to disable
+   */
+  name: string;
+}
+
+export interface SessionSkillsReloadResult {}
+
+export interface SessionSkillsReloadParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+}
+
+export interface SessionMcpListResult {
+  /**
+   * Configured MCP servers
+   */
+  servers: {
+    /**
+     * Server name (config key)
+     */
+    name: string;
+    /**
+     * Connection status: connected, failed, pending, disabled, or not_configured
+     */
+    status: "connected" | "failed" | "pending" | "disabled" | "not_configured";
+    /**
+     * Configuration source: user, workspace, plugin, or builtin
+     */
+    source?: string;
+    /**
+     * Error message if the server failed to connect
+     */
+    error?: string;
+  }[];
+}
+
+export interface SessionMcpListParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+}
+
+export interface SessionMcpEnableResult {}
+
+export interface SessionMcpEnableParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+  /**
+   * Name of the MCP server to enable
+   */
+  serverName: string;
+}
+
+export interface SessionMcpDisableResult {}
+
+export interface SessionMcpDisableParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+  /**
+   * Name of the MCP server to disable
+   */
+  serverName: string;
+}
+
+export interface SessionMcpReloadResult {}
+
+export interface SessionMcpReloadParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+}
+
+export interface SessionPluginsListResult {
+  /**
+   * Installed plugins
+   */
+  plugins: {
+    /**
+     * Plugin name
+     */
+    name: string;
+    /**
+     * Marketplace the plugin came from
+     */
+    marketplace: string;
+    /**
+     * Installed version
+     */
+    version?: string;
+    /**
+     * Whether the plugin is currently enabled
+     */
+    enabled: boolean;
+  }[];
+}
+
+export interface SessionPluginsListParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+}
+
+export interface SessionExtensionsListResult {
+  /**
+   * Discovered extensions and their current status
+   */
+  extensions: {
+    /**
+     * Source-qualified ID (e.g., 'project:my-ext', 'user:auth-helper')
+     */
+    id: string;
+    /**
+     * Extension name (directory name)
+     */
+    name: string;
+    /**
+     * Discovery source: project (.github/extensions/) or user (~/.copilot/extensions/)
+     */
+    source: "project" | "user";
+    /**
+     * Current status: running, disabled, failed, or starting
+     */
+    status: "running" | "disabled" | "failed" | "starting";
+    /**
+     * Process ID if the extension is running
+     */
+    pid?: number;
+  }[];
+}
+
+export interface SessionExtensionsListParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+}
+
+export interface SessionExtensionsEnableResult {}
+
+export interface SessionExtensionsEnableParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+  /**
+   * Source-qualified extension ID to enable
+   */
+  id: string;
+}
+
+export interface SessionExtensionsDisableResult {}
+
+export interface SessionExtensionsDisableParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+  /**
+   * Source-qualified extension ID to disable
+   */
+  id: string;
+}
+
+export interface SessionExtensionsReloadResult {}
+
+export interface SessionExtensionsReloadParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+}
+
 export interface SessionCompactionCompactResult {
   /**
    * Whether compaction completed successfully
@@ -559,6 +827,10 @@ export interface SessionLogParams {
    * When true, the message is transient and not persisted to the session event log on disk
    */
   ephemeral?: boolean;
+  /**
+   * Optional URL the user can open in their browser for more details
+   */
+  url?: string;
 }
 
 export interface SessionShellExecResult {
@@ -673,6 +945,42 @@ export function createSessionRpc(connection: MessageConnection, sessionId: strin
                 connection.sendRequest("session.agent.select", { sessionId, ...params }),
             deselect: async (): Promise<SessionAgentDeselectResult> =>
                 connection.sendRequest("session.agent.deselect", { sessionId }),
+            reload: async (): Promise<SessionAgentReloadResult> =>
+                connection.sendRequest("session.agent.reload", { sessionId }),
+        },
+        skills: {
+            list: async (): Promise<SessionSkillsListResult> =>
+                connection.sendRequest("session.skills.list", { sessionId }),
+            enable: async (params: Omit<SessionSkillsEnableParams, "sessionId">): Promise<SessionSkillsEnableResult> =>
+                connection.sendRequest("session.skills.enable", { sessionId, ...params }),
+            disable: async (params: Omit<SessionSkillsDisableParams, "sessionId">): Promise<SessionSkillsDisableResult> =>
+                connection.sendRequest("session.skills.disable", { sessionId, ...params }),
+            reload: async (): Promise<SessionSkillsReloadResult> =>
+                connection.sendRequest("session.skills.reload", { sessionId }),
+        },
+        mcp: {
+            list: async (): Promise<SessionMcpListResult> =>
+                connection.sendRequest("session.mcp.list", { sessionId }),
+            enable: async (params: Omit<SessionMcpEnableParams, "sessionId">): Promise<SessionMcpEnableResult> =>
+                connection.sendRequest("session.mcp.enable", { sessionId, ...params }),
+            disable: async (params: Omit<SessionMcpDisableParams, "sessionId">): Promise<SessionMcpDisableResult> =>
+                connection.sendRequest("session.mcp.disable", { sessionId, ...params }),
+            reload: async (): Promise<SessionMcpReloadResult> =>
+                connection.sendRequest("session.mcp.reload", { sessionId }),
+        },
+        plugins: {
+            list: async (): Promise<SessionPluginsListResult> =>
+                connection.sendRequest("session.plugins.list", { sessionId }),
+        },
+        extensions: {
+            list: async (): Promise<SessionExtensionsListResult> =>
+                connection.sendRequest("session.extensions.list", { sessionId }),
+            enable: async (params: Omit<SessionExtensionsEnableParams, "sessionId">): Promise<SessionExtensionsEnableResult> =>
+                connection.sendRequest("session.extensions.enable", { sessionId, ...params }),
+            disable: async (params: Omit<SessionExtensionsDisableParams, "sessionId">): Promise<SessionExtensionsDisableResult> =>
+                connection.sendRequest("session.extensions.disable", { sessionId, ...params }),
+            reload: async (): Promise<SessionExtensionsReloadResult> =>
+                connection.sendRequest("session.extensions.reload", { sessionId }),
         },
         compaction: {
             compact: async (): Promise<SessionCompactionCompactResult> =>
