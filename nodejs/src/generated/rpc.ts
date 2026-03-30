@@ -1208,6 +1208,10 @@ export interface SessionFsMkdirParams {
   sessionId: string;
   path: string;
   recursive?: boolean;
+  /**
+   * Optional POSIX-style mode for newly created directories
+   */
+  mode?: number;
 }
 
 export interface SessionFsReaddirResult {
@@ -1218,6 +1222,26 @@ export interface SessionFsReaddirResult {
 }
 
 export interface SessionFsReaddirParams {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
+  path: string;
+}
+
+export interface SessionFsDirEntry {
+  name: string;
+  type: "file" | "directory";
+}
+
+export interface SessionFsReaddirWithTypesResult {
+  /**
+   * Directory entries with type information
+   */
+  entries: SessionFsDirEntry[];
+}
+
+export interface SessionFsReaddirWithTypesParams {
   /**
    * Target session identifier
    */
@@ -1401,6 +1425,7 @@ export interface SessionFsHandler {
     stat(params: SessionFsStatParams): Promise<SessionFsStatResult>;
     mkdir(params: SessionFsMkdirParams): Promise<void>;
     readdir(params: SessionFsReaddirParams): Promise<SessionFsReaddirResult>;
+    readdirWithTypes(params: SessionFsReaddirWithTypesParams): Promise<SessionFsReaddirWithTypesResult>;
     rm(params: SessionFsRmParams): Promise<void>;
     rename(params: SessionFsRenameParams): Promise<void>;
 }
@@ -1429,6 +1454,7 @@ export function registerClientApiHandlers(
         connection.onRequest("sessionFs.stat", (params: SessionFsStatParams) => h.stat(params));
         connection.onRequest("sessionFs.mkdir", (params: SessionFsMkdirParams) => h.mkdir(params));
         connection.onRequest("sessionFs.readdir", (params: SessionFsReaddirParams) => h.readdir(params));
+        connection.onRequest("sessionFs.readdirWithTypes", (params: SessionFsReaddirWithTypesParams) => h.readdirWithTypes(params));
         connection.onRequest("sessionFs.rm", (params: SessionFsRmParams) => h.rm(params));
         connection.onRequest("sessionFs.rename", (params: SessionFsRenameParams) => h.rename(params));
     }
