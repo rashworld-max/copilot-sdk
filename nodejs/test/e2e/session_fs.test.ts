@@ -2,30 +2,42 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
-import { MemoryProvider } from "@platformatic/vfs";
+import { MemoryProvider, VirtualProvider } from "@platformatic/vfs";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { CopilotClient } from "../../src/client.js";
-import { approveAll, defineTool, SessionEvent, type SessionFsConfig } from "../../src/index.js";
+import { SessionFsHandler } from "../../src/generated/rpc.js";
+import {
+    approveAll,
+    CopilotSession,
+    defineTool,
+    SessionEvent,
+    type SessionFsConfig,
+} from "../../src/index.js";
 import { createSdkTestContext } from "./harness/sdkTestContext.js";
+
+process.env.COPILOT_CLI_PATH =
+    "c:\\Users\\stevesa\\.copilot\\worktrees\\copilot-agent-runtime\\amber-aura\\dist-cli\\index.js";
 
 describe("Session Fs", async () => {
     // Single provider for the describe block — session IDs are unique per test,
     // so no cross-contamination between tests.
     const provider = new MemoryProvider();
-    const { config } = createMemorySessionFs("/projects/test", "/session-state", provider);
+    const createSessionFsHandler = (session: CopilotSession) =>
+        createTestSessionFsHandler(session, provider);
 
     // Helpers to build session-namespaced paths for direct provider assertions
     const p = (sessionId: string, path: string) =>
         `/${sessionId}${path.startsWith("/") ? path : "/" + path}`;
 
     const { copilotClient: client, env } = await createSdkTestContext({
-        copilotClientOptions: {
-            sessionFs: config,
-        },
+        copilotClientOptions: { sessionFs: sessionFsConfig },
     });
 
     it("should route file operations through the session fs provider", async () => {
-        const session = await client.createSession({ onPermissionRequest: approveAll });
+        const session = await client.createSession({
+            onPermissionRequest: approveAll,
+            createSessionFsHandler,
+        });
 
         const msg = await session.sendAndWait({ prompt: "What is 100 + 200?" });
         expect(msg?.data.content).toContain("300");
@@ -37,7 +49,10 @@ describe("Session Fs", async () => {
     });
 
     it("should load session data from fs provider on resume", async () => {
-        const session1 = await client.createSession({ onPermissionRequest: approveAll });
+        const session1 = await client.createSession({
+            onPermissionRequest: approveAll,
+            createSessionFsHandler,
+        });
         const sessionId = session1.sessionId;
 
         const msg = await session1.sendAndWait({ prompt: "What is 50 + 50?" });
@@ -49,6 +64,7 @@ describe("Session Fs", async () => {
 
         const session2 = await client.resumeSession(sessionId, {
             onPermissionRequest: approveAll,
+            createSessionFsHandler,
         });
 
         // Send another message to verify the session is functional after resume
@@ -62,23 +78,18 @@ describe("Session Fs", async () => {
             useStdio: false, // Use TCP so we can connect from a second client
             env,
         });
-        await client.createSession({ onPermissionRequest: approveAll });
+        await client.createSession({ onPermissionRequest: approveAll, createSessionFsHandler });
 
         // Get the port the first client's runtime is listening on
         const port = (client as unknown as { actualPort: number }).actualPort;
 
         // Second client tries to connect with a session fs — should fail
         // because sessions already exist on the runtime.
-        const { config: config2 } = createMemorySessionFs(
-            "/projects/test",
-            "/session-state",
-            new MemoryProvider()
-        );
         const client2 = new CopilotClient({
             env,
             logLevel: "error",
             cliUrl: `localhost:${port}`,
-            sessionFs: config2,
+            sessionFs: sessionFsConfig,
         });
         onTestFinished(() => client2.forceStop());
 
@@ -89,6 +100,7 @@ describe("Session Fs", async () => {
         const suppliedFileContent = "x".repeat(100_000);
         const session = await client.createSession({
             onPermissionRequest: approveAll,
+            createSessionFsHandler,
             tools: [
                 defineTool("get_big_string", {
                     description: "Returns a large string",
@@ -132,78 +144,71 @@ function findToolName(messages: SessionEvent[], toolCallId: string): string | un
     }
 }
 
-/**
- * Builds a SessionFsConfig backed by a @platformatic/vfs MemoryProvider.
- * Each sessionId is namespaced under `/<sessionId>/` in the provider's tree.
- * Tests can assert directly against the returned MemoryProvider instance.
- */
-function createMemorySessionFs(
-    initialCwd: string,
-    sessionStatePath: string,
-    provider: MemoryProvider
-): { config: SessionFsConfig } {
+const sessionFsConfig: SessionFsConfig = {
+    initialCwd: "/",
+    sessionStatePath: "/session-state",
+    conventions: "linux",
+};
+
+function createTestSessionFsHandler(
+    session: CopilotSession,
+    provider: VirtualProvider
+): SessionFsHandler {
     const sp = (sessionId: string, path: string) =>
         `/${sessionId}${path.startsWith("/") ? path : "/" + path}`;
 
-    const config: SessionFsConfig = {
-        initialCwd,
-        sessionStatePath,
-        conventions: "linux",
-        createHandler: (session) => ({
-            readFile: async ({ path }) => {
-                const content = await provider.readFile(sp(session.sessionId, path), "utf8");
-                return { content: content as string };
-            },
-            writeFile: async ({ path, content }) => {
-                await provider.writeFile(sp(session.sessionId, path), content);
-            },
-            appendFile: async ({ path, content }) => {
-                await provider.appendFile(sp(session.sessionId, path), content);
-            },
-            exists: async ({ path }) => {
-                return { exists: await provider.exists(sp(session.sessionId, path)) };
-            },
-            stat: async ({ path }) => {
-                const st = await provider.stat(sp(session.sessionId, path));
-                return {
-                    isFile: st.isFile(),
-                    isDirectory: st.isDirectory(),
-                    size: st.size,
-                    mtime: new Date(st.mtimeMs).toISOString(),
-                    birthtime: new Date(st.birthtimeMs).toISOString(),
-                };
-            },
-            mkdir: async ({ path, recursive, mode }) => {
-                await provider.mkdir(sp(session.sessionId, path), {
-                    recursive: recursive ?? false,
-                    mode,
-                });
-            },
-            readdir: async ({ path }) => {
-                const entries = await provider.readdir(sp(session.sessionId, path));
-                return { entries: entries as string[] };
-            },
-            readdirWithTypes: async ({ path }) => {
-                const names = (await provider.readdir(sp(session.sessionId, path))) as string[];
-                const entries = await Promise.all(
-                    names.map(async (name) => {
-                        const st = await provider.stat(sp(session.sessionId, `${path}/${name}`));
-                        return {
-                            name,
-                            type: st.isDirectory() ? ("directory" as const) : ("file" as const),
-                        };
-                    })
-                );
-                return { entries };
-            },
-            rm: async ({ path }) => {
-                await provider.unlink(sp(session.sessionId, path));
-            },
-            rename: async ({ src, dest }) => {
-                await provider.rename(sp(session.sessionId, src), sp(session.sessionId, dest));
-            },
-        }),
+    return {
+        readFile: async ({ path }) => {
+            const content = await provider.readFile(sp(session.sessionId, path), "utf8");
+            return { content: content as string };
+        },
+        writeFile: async ({ path, content }) => {
+            await provider.writeFile(sp(session.sessionId, path), content);
+        },
+        appendFile: async ({ path, content }) => {
+            await provider.appendFile(sp(session.sessionId, path), content);
+        },
+        exists: async ({ path }) => {
+            return { exists: await provider.exists(sp(session.sessionId, path)) };
+        },
+        stat: async ({ path }) => {
+            const st = await provider.stat(sp(session.sessionId, path));
+            return {
+                isFile: st.isFile(),
+                isDirectory: st.isDirectory(),
+                size: st.size,
+                mtime: new Date(st.mtimeMs).toISOString(),
+                birthtime: new Date(st.birthtimeMs).toISOString(),
+            };
+        },
+        mkdir: async ({ path, recursive, mode }) => {
+            await provider.mkdir(sp(session.sessionId, path), {
+                recursive: recursive ?? false,
+                mode,
+            });
+        },
+        readdir: async ({ path }) => {
+            const entries = await provider.readdir(sp(session.sessionId, path));
+            return { entries: entries as string[] };
+        },
+        readdirWithTypes: async ({ path }) => {
+            const names = (await provider.readdir(sp(session.sessionId, path))) as string[];
+            const entries = await Promise.all(
+                names.map(async (name) => {
+                    const st = await provider.stat(sp(session.sessionId, `${path}/${name}`));
+                    return {
+                        name,
+                        type: st.isDirectory() ? ("directory" as const) : ("file" as const),
+                    };
+                })
+            );
+            return { entries };
+        },
+        rm: async ({ path }) => {
+            await provider.unlink(sp(session.sessionId, path));
+        },
+        rename: async ({ src, dest }) => {
+            await provider.rename(sp(session.sessionId, src), sp(session.sessionId, dest));
+        },
     };
-
-    return { config };
 }

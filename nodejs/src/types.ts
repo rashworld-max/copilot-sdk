@@ -11,7 +11,7 @@ import type { SessionEvent as GeneratedSessionEvent } from "./generated/session-
 export type SessionEvent = GeneratedSessionEvent;
 
 import type { SessionFsHandler } from "./generated/rpc.js";
-export type { SessionFsHandler } from "./generated/rpc.js";
+import type { CopilotSession } from "./session.js";
 
 /**
  * Options for creating a CopilotClient
@@ -649,7 +649,6 @@ export interface PermissionRequest {
 }
 
 import type { SessionPermissionsHandlePendingPermissionRequestParams } from "./generated/rpc.js";
-import { CopilotSession } from "./session.js";
 
 export type PermissionRequestResult =
     | SessionPermissionsHandlePendingPermissionRequestParams["result"]
@@ -1193,6 +1192,12 @@ export interface SessionConfig {
      * but executes earlier in the lifecycle so no events are missed.
      */
     onEvent?: SessionEventHandler;
+
+    /**
+     * Supplies a handler for session filesystem operations. This takes effect
+     * only if {@link CopilotClientOptions.sessionFs} is configured.
+     */
+    createSessionFsHandler?: (session: CopilotSession) => SessionFsHandler;
 }
 
 /**
@@ -1223,6 +1228,7 @@ export type ResumeSessionConfig = Pick<
     | "disabledSkills"
     | "infiniteSessions"
     | "onEvent"
+    | "createSessionFsHandler"
 > & {
     /**
      * When true, skips emitting the session.resume event.
@@ -1383,11 +1389,6 @@ export interface SessionFsConfig {
      * Path conventions used by this filesystem provider.
      */
     conventions: "windows" | "linux";
-
-    /**
-     * Supplies a handler for session filesystem operations.
-     */
-    createHandler: (session: CopilotSession) => SessionFsHandler;
 }
 
 /**
