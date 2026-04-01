@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------------------------------------------*/
 
+import { SessionCompactionCompleteEvent } from "@github/copilot/sdk";
 import { MemoryProvider, VirtualProvider } from "@platformatic/vfs";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { CopilotClient } from "../../src/client.js";
@@ -123,6 +124,26 @@ describe("Session Fs", async () => {
         // Verify the file was written with the correct content via the provider
         const fileContent = await provider.readFile(p(session.sessionId, filename!), "utf8");
         expect(fileContent).toBe(suppliedFileContent);
+    });
+
+    it("should succeed with compaction while using sessionFs", async () => {
+        const session = await client.createSession({
+            onPermissionRequest: approveAll,
+            createSessionFsHandler,
+        });
+
+        let compactionEvent: SessionCompactionCompleteEvent | undefined;
+        session.on("session.compaction_complete", (evt) => (compactionEvent = evt));
+
+        await session.sendAndWait({ prompt: "What is 2+2?" });
+
+        const eventsPath = p(session.sessionId, "/session-state/events.jsonl");
+        await expect.poll(() => provider.exists(eventsPath)).toBe(true);
+
+        await session.rpc.compaction.compact();
+        await expect.poll(() => compactionEvent).toBeDefined();
+        expect(compactionEvent!.data.success).toBe(true);
+        expect(compactionEvent!.data.summaryContent).toContain("<overview>");
     });
 });
 
