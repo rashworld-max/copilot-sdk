@@ -129,6 +129,37 @@ export interface RpcMethod {
     stability?: string;
 }
 
+export function getRpcSchemaTypeName(schema: JSONSchema7 | null | undefined, fallback: string): string {
+    const titleSuggestion = (schema as JSONSchema7 & { titleSuggestion?: unknown } | null | undefined)?.titleSuggestion;
+    if (typeof schema?.title === "string") return schema.title;
+    return typeof titleSuggestion === "string" ? titleSuggestion : fallback;
+}
+
+export function applyTitleSuggestions<T>(value: T): T {
+    if (Array.isArray(value)) {
+        return value.map((item) => applyTitleSuggestions(item)) as T;
+    }
+
+    if (value && typeof value === "object") {
+        const result: Record<string, unknown> = {};
+        const source = value as Record<string, unknown>;
+        for (const [key, child] of Object.entries(source)) {
+            if (key === "titleSuggestion") {
+                continue;
+            }
+            result[key] = applyTitleSuggestions(child);
+        }
+
+        if (typeof source.title !== "string" && typeof source.titleSuggestion === "string") {
+            result.title = source.titleSuggestion;
+        }
+
+        return result as T;
+    }
+
+    return value;
+}
+
 export interface ApiSchema {
     server?: Record<string, unknown>;
     session?: Record<string, unknown>;

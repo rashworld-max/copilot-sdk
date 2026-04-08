@@ -10,12 +10,13 @@ import fs from "fs/promises";
 import type { JSONSchema7 } from "json-schema";
 import { FetchingJSONSchemaStore, InputData, JSONSchemaInput, quicktype } from "quicktype-core";
 import {
+    applyTitleSuggestions,
     getApiSchemaPath,
+    getRpcSchemaTypeName,
     getSessionEventsSchemaPath,
     isRpcMethod,
     postProcessSchema,
     writeGeneratedFile,
-    isRpcMethod,
     isNodeFullyExperimental,
     type ApiSchema,
     type RpcMethod,
@@ -144,13 +145,21 @@ function collectRpcMethods(node: Record<string, unknown>): RpcMethod[] {
     return results;
 }
 
+function pythonResultTypeName(method: RpcMethod): string {
+    return getRpcSchemaTypeName(method.result, toPascalCase(method.rpcMethod) + "Result");
+}
+
+function pythonParamsTypeName(method: RpcMethod): string {
+    return getRpcSchemaTypeName(method.params, toPascalCase(method.rpcMethod) + "Request");
+}
+
 // ── Session Events ──────────────────────────────────────────────────────────
 
 async function generateSessionEvents(schemaPath?: string): Promise<void> {
     console.log("Python: generating session-events...");
 
     const resolvedPath = schemaPath ?? (await getSessionEventsSchemaPath());
-    const schema = JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as JSONSchema7;
+    const schema = applyTitleSuggestions(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as JSONSchema7);
     const resolvedSchema = (schema.definitions?.SessionEvent as JSONSchema7) || schema;
     const processed = postProcessSchema(resolvedSchema);
 
@@ -206,7 +215,7 @@ async function generateRpc(schemaPath?: string): Promise<void> {
     console.log("Python: generating RPC types...");
 
     const resolvedPath = schemaPath ?? (await getApiSchemaPath());
-    const schema = JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as ApiSchema;
+    const schema = applyTitleSuggestions(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as ApiSchema);
 
     const allMethods = [
         ...collectRpcMethods(schema.server || {}),
@@ -221,9 +230,8 @@ async function generateRpc(schemaPath?: string): Promise<void> {
     };
 
     for (const method of allMethods) {
-        const baseName = toPascalCase(method.rpcMethod);
         if (method.result) {
-            combinedSchema.definitions![baseName + "Result"] = method.result;
+            combinedSchema.definitions![pythonResultTypeName(method)] = method.result;
         }
         if (method.params?.properties && Object.keys(method.params.properties).length > 0) {
             if (method.rpcMethod.startsWith("session.")) {
@@ -235,10 +243,10 @@ async function generateRpc(schemaPath?: string): Promise<void> {
                     required: method.params.required?.filter((r) => r !== "sessionId"),
                 };
                 if (Object.keys(filtered.properties!).length > 0) {
-                    combinedSchema.definitions![baseName + "Params"] = filtered;
+                    combinedSchema.definitions![pythonParamsTypeName(method)] = filtered;
                 }
             } else {
-                combinedSchema.definitions![baseName + "Params"] = method.params;
+                combinedSchema.definitions![pythonParamsTypeName(method)] = method.params;
             }
         }
     }
@@ -272,10 +280,10 @@ async function generateRpc(schemaPath?: string): Promise<void> {
     const experimentalTypeNames = new Set<string>();
     for (const method of allMethods) {
         if (method.stability !== "experimental") continue;
-        experimentalTypeNames.add(toPascalCase(method.rpcMethod) + "Result");
-        const baseName = toPascalCase(method.rpcMethod);
-        if (combinedSchema.definitions![baseName + "Params"]) {
-            experimentalTypeNames.add(baseName + "Params");
+        experimentalTypeNames.add(pythonResultTypeName(method));
+        const paramsTypeName = pythonParamsTypeName(method);
+        if (combinedSchema.definitions![paramsTypeName]) {
+            experimentalTypeNames.add(paramsTypeName);
         }
     }
     for (const typeName of experimentalTypeNames) {
@@ -402,12 +410,12 @@ function emitRpcWrapper(lines: string[], node: Record<string, unknown>, isSessio
 
 function emitMethod(lines: string[], name: string, method: RpcMethod, isSession: boolean, resolveType: (name: string) => string, groupExperimental = false): void {
     const methodName = toSnakeCase(name);
-    const resultType = resolveType(toPascalCase(method.rpcMethod) + "Result");
+    const resultType = resolveType(pythonResultTypeName(method));
 
     const paramProps = method.params?.properties || {};
     const nonSessionParams = Object.keys(paramProps).filter((k) => k !== "sessionId");
     const hasParams = isSession ? nonSessionParams.length > 0 : Object.keys(paramProps).length > 0;
-    const paramsType = resolveType(toPascalCase(method.rpcMethod) + "Params");
+    const paramsType = resolveType(pythonParamsTypeName(method));
 
     // Build signature with typed params + optional timeout
     const sig = hasParams
@@ -503,8 +511,8 @@ function emitClientSessionHandlerMethod(
     resolveType: (name: string) => string,
     groupExperimental = false
 ): void {
-    const paramsType = resolveType(toPascalCase(method.rpcMethod) + "Params");
-    const resultType = method.result ? resolveType(toPascalCase(method.rpcMethod) + "Result") : "None";
+    const paramsType = resolveType(pythonParamsTypeName(method));
+    const resultType = method.result ? resolveType(pythonResultTypeName(method)) : "None";
     lines.push(`    async def ${toSnakeCase(name)}(self, params: ${paramsType}) -> ${resultType}:`);
     if (method.stability === "experimental" && !groupExperimental) {
         lines.push(`        """.. warning:: This API is experimental and may change or be removed in future versions."""`);
@@ -520,8 +528,8 @@ function emitClientSessionRegistrationMethod(
     resolveType: (name: string) => string
 ): void {
     const handlerVariableName = `handle_${toSnakeCase(groupName)}_${toSnakeCase(methodName)}`;
-    const paramsType = resolveType(toPascalCase(method.rpcMethod) + "Params");
-    const resultType = method.result ? resolveType(toPascalCase(method.rpcMethod) + "Result") : null;
+    const paramsType = resolveType(pythonParamsTypeName(method));
+    const resultType = method.result ? resolveType(pythonResultTypeName(method)) : null;
     const handlerField = toSnakeCase(groupName);
     const handlerMethod = toSnakeCase(methodName);
 

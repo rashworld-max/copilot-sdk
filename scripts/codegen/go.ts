@@ -12,8 +12,10 @@ import type { JSONSchema7 } from "json-schema";
 import { FetchingJSONSchemaStore, InputData, JSONSchemaInput, quicktype } from "quicktype-core";
 import { promisify } from "util";
 import {
+    applyTitleSuggestions,
     EXCLUDED_EVENT_TYPES,
     getApiSchemaPath,
+    getRpcSchemaTypeName,
     getSessionEventsSchemaPath,
     isNodeFullyExperimental,
     isRpcMethod,
@@ -115,6 +117,14 @@ function extractFieldNames(qtCode: string): Map<string, Map<string, string>> {
         result.set(structName, fields);
     }
     return result;
+}
+
+function goResultTypeName(method: RpcMethod): string {
+    return getRpcSchemaTypeName(method.result, toPascalCase(method.rpcMethod) + "Result");
+}
+
+function goParamsTypeName(method: RpcMethod): string {
+    return getRpcSchemaTypeName(method.params, toPascalCase(method.rpcMethod) + "Request");
 }
 
 async function formatGoFile(filePath: string): Promise<void> {
@@ -277,8 +287,9 @@ function resolveGoPropertyType(
             // Check for discriminated union
             const disc = findGoDiscriminator(nonNull);
             if (disc) {
-                emitGoFlatDiscriminatedUnion(nestedName, disc.property, disc.mapping, ctx, propSchema.description);
-                return isRequired && !hasNull ? nestedName : `*${nestedName}`;
+                const unionName = (propSchema.title as string) || nestedName;
+                emitGoFlatDiscriminatedUnion(unionName, disc.property, disc.mapping, ctx, propSchema.description);
+                return isRequired && !hasNull ? unionName : `*${unionName}`;
             }
             // Non-discriminated multi-type union → any
             return "any";
@@ -287,7 +298,7 @@ function resolveGoPropertyType(
 
     // Handle enum
     if (propSchema.enum && Array.isArray(propSchema.enum)) {
-        const enumType = getOrCreateGoEnum(nestedName, propSchema.enum as string[], ctx, propSchema.description);
+        const enumType = getOrCreateGoEnum((propSchema.title as string) || nestedName, propSchema.enum as string[], ctx, propSchema.description);
         return isRequired ? enumType : `*${enumType}`;
     }
 
@@ -335,7 +346,7 @@ function resolveGoPropertyType(
                 const itemVariants = (items.anyOf as JSONSchema7[]).filter((v) => v.type !== "null");
                 const disc = findGoDiscriminator(itemVariants);
                 if (disc) {
-                    const itemTypeName = nestedName + "Item";
+                    const itemTypeName = (items.title as string) || (nestedName + "Item");
                     emitGoFlatDiscriminatedUnion(itemTypeName, disc.property, disc.mapping, ctx, items.description);
                     return `[]${itemTypeName}`;
                 }
@@ -349,8 +360,9 @@ function resolveGoPropertyType(
     // Object type
     if (type === "object" || (propSchema.properties && !type)) {
         if (propSchema.properties && Object.keys(propSchema.properties).length > 0) {
-            emitGoStruct(nestedName, propSchema, ctx);
-            return isRequired ? nestedName : `*${nestedName}`;
+            const structName = (propSchema.title as string) || nestedName;
+            emitGoStruct(structName, propSchema, ctx);
+            return isRequired ? structName : `*${structName}`;
         }
         if (propSchema.additionalProperties) {
             if (
@@ -359,8 +371,9 @@ function resolveGoPropertyType(
             ) {
                 const ap = propSchema.additionalProperties as JSONSchema7;
                 if (ap.type === "object" && ap.properties) {
-                    emitGoStruct(nestedName + "Value", ap, ctx);
-                    return `map[string]${nestedName}Value`;
+                    const valueName = (ap.title as string) || `${nestedName}Value`;
+                    emitGoStruct(valueName, ap, ctx);
+                    return `map[string]${valueName}`;
                 }
                 const valueType = resolveGoPropertyType(ap, parentTypeName, jsonPropName + "Value", true, ctx);
                 return `map[string]${valueType}`;
@@ -777,7 +790,7 @@ async function generateSessionEvents(schemaPath?: string): Promise<void> {
     console.log("Go: generating session-events...");
 
     const resolvedPath = schemaPath ?? (await getSessionEventsSchemaPath());
-    const schema = JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as JSONSchema7;
+    const schema = applyTitleSuggestions(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as JSONSchema7);
     const processed = postProcessSchema(schema);
 
     const code = generateGoSessionEventsCode(processed);
@@ -794,7 +807,7 @@ async function generateRpc(schemaPath?: string): Promise<void> {
     console.log("Go: generating RPC types...");
 
     const resolvedPath = schemaPath ?? (await getApiSchemaPath());
-    const schema = JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as ApiSchema;
+    const schema = applyTitleSuggestions(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as ApiSchema);
 
     const allMethods = [
         ...collectRpcMethods(schema.server || {}),
@@ -809,9 +822,8 @@ async function generateRpc(schemaPath?: string): Promise<void> {
     };
 
     for (const method of allMethods) {
-        const baseName = toPascalCase(method.rpcMethod);
         if (method.result) {
-            combinedSchema.definitions![baseName + "Result"] = method.result;
+            combinedSchema.definitions![goResultTypeName(method)] = method.result;
         }
         if (method.params?.properties && Object.keys(method.params.properties).length > 0) {
             // For session methods, filter out sessionId from params type
@@ -824,10 +836,10 @@ async function generateRpc(schemaPath?: string): Promise<void> {
                     required: method.params.required?.filter((r) => r !== "sessionId"),
                 };
                 if (Object.keys(filtered.properties!).length > 0) {
-                    combinedSchema.definitions![baseName + "Params"] = filtered;
+                    combinedSchema.definitions![goParamsTypeName(method)] = filtered;
                 }
             } else {
-                combinedSchema.definitions![baseName + "Params"] = method.params;
+                combinedSchema.definitions![goParamsTypeName(method)] = method.params;
             }
         }
     }
@@ -869,10 +881,10 @@ async function generateRpc(schemaPath?: string): Promise<void> {
     const experimentalTypeNames = new Set<string>();
     for (const method of allMethods) {
         if (method.stability !== "experimental") continue;
-        experimentalTypeNames.add(toPascalCase(method.rpcMethod) + "Result");
-        const baseName = toPascalCase(method.rpcMethod);
-        if (combinedSchema.definitions![baseName + "Params"]) {
-            experimentalTypeNames.add(baseName + "Params");
+        experimentalTypeNames.add(goResultTypeName(method));
+        const paramsTypeName = goParamsTypeName(method);
+        if (combinedSchema.definitions![paramsTypeName]) {
+            experimentalTypeNames.add(paramsTypeName);
         }
     }
     for (const typeName of experimentalTypeNames) {
@@ -1004,13 +1016,13 @@ function emitRpcWrapper(lines: string[], node: Record<string, unknown>, isSessio
 
 function emitMethod(lines: string[], receiver: string, name: string, method: RpcMethod, isSession: boolean, resolveType: (name: string) => string, fieldNames: Map<string, Map<string, string>>, groupExperimental = false, isWrapper = false): void {
     const methodName = toPascalCase(name);
-    const resultType = resolveType(toPascalCase(method.rpcMethod) + "Result");
+    const resultType = resolveType(goResultTypeName(method));
 
     const paramProps = method.params?.properties || {};
     const requiredParams = new Set(method.params?.required || []);
     const nonSessionParams = Object.keys(paramProps).filter((k) => k !== "sessionId");
     const hasParams = isSession ? nonSessionParams.length > 0 : Object.keys(paramProps).length > 0;
-    const paramsType = hasParams ? resolveType(toPascalCase(method.rpcMethod) + "Params") : "";
+    const paramsType = hasParams ? resolveType(goParamsTypeName(method)) : "";
 
     // For wrapper-level methods, access fields through a.common; for service type aliases, use a directly
     const clientRef = isWrapper ? "a.common.client" : "a.client";
@@ -1103,9 +1115,9 @@ function emitClientSessionApiRegistration(lines: string[], clientSchema: Record<
             if (method.stability === "experimental" && !groupExperimental) {
                 lines.push(`\t// Experimental: ${clientHandlerMethodName(method.rpcMethod)} is an experimental API and may change or be removed in future versions.`);
             }
-            const paramsType = resolveType(toPascalCase(method.rpcMethod) + "Params");
+            const paramsType = resolveType(goParamsTypeName(method));
             if (method.result) {
-                const resultType = resolveType(toPascalCase(method.rpcMethod) + "Result");
+                const resultType = resolveType(goResultTypeName(method));
                 lines.push(`\t${clientHandlerMethodName(method.rpcMethod)}(request *${paramsType}) (*${resultType}, error)`);
             } else {
                 lines.push(`\t${clientHandlerMethodName(method.rpcMethod)}(request *${paramsType}) error`);
@@ -1140,7 +1152,7 @@ function emitClientSessionApiRegistration(lines: string[], clientSchema: Record<
     for (const { groupName, methods } of groups) {
         const handlerField = toPascalCase(groupName);
         for (const method of methods) {
-            const paramsType = resolveType(toPascalCase(method.rpcMethod) + "Params");
+            const paramsType = resolveType(goParamsTypeName(method));
             lines.push(`\tclient.SetRequestHandler("${method.rpcMethod}", func(params json.RawMessage) (json.RawMessage, *jsonrpc2.Error) {`);
             lines.push(`\t\tvar request ${paramsType}`);
             lines.push(`\t\tif err := json.Unmarshal(params, &request); err != nil {`);

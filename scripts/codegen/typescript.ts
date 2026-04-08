@@ -10,17 +10,16 @@ import fs from "fs/promises";
 import type { JSONSchema7 } from "json-schema";
 import { compile } from "json-schema-to-typescript";
 import {
-    getSessionEventsSchemaPath,
     getApiSchemaPath,
+    getRpcSchemaTypeName,
+    getSessionEventsSchemaPath,
+    isNodeFullyExperimental,
+    isRpcMethod,
     postProcessSchema,
     writeGeneratedFile,
-    isRpcMethod,
-    isNodeFullyExperimental,
     type ApiSchema,
     type RpcMethod,
 } from "./utils.js";
-
-// ── Utilities ───────────────────────────────────────────────────────────────
 
 function toPascalCase(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -62,12 +61,12 @@ async function generateSessionEvents(schemaPath?: string): Promise<void> {
 
 // ── RPC Types ───────────────────────────────────────────────────────────────
 
-function resultTypeName(rpcMethod: string): string {
-    return rpcMethod.split(".").map(toPascalCase).join("") + "Result";
+function resultTypeName(method: RpcMethod): string {
+    return getRpcSchemaTypeName(method.result, method.rpcMethod.split(".").map(toPascalCase).join("") + "Result");
 }
 
-function paramsTypeName(rpcMethod: string): string {
-    return rpcMethod.split(".").map(toPascalCase).join("") + "Params";
+function paramsTypeName(method: RpcMethod): string {
+    return getRpcSchemaTypeName(method.params, method.rpcMethod.split(".").map(toPascalCase).join("") + "Request");
 }
 
 async function generateRpc(schemaPath?: string): Promise<void> {
@@ -90,7 +89,7 @@ import type { MessageConnection } from "vscode-jsonrpc/node.js";
 
     for (const method of [...allMethods, ...clientSessionMethods]) {
         if (method.result) {
-            const compiled = await compile(method.result, resultTypeName(method.rpcMethod), {
+            const compiled = await compile(method.result, resultTypeName(method), {
                 bannerComment: "",
                 additionalProperties: false,
             });
@@ -102,7 +101,7 @@ import type { MessageConnection } from "vscode-jsonrpc/node.js";
         }
 
         if (method.params?.properties && Object.keys(method.params.properties).length > 0) {
-            const paramsCompiled = await compile(method.params, paramsTypeName(method.rpcMethod), {
+            const paramsCompiled = await compile(method.params, paramsTypeName(method), {
                 bannerComment: "",
                 additionalProperties: false,
             });
@@ -149,8 +148,8 @@ function emitGroup(node: Record<string, unknown>, indent: string, isSession: boo
     for (const [key, value] of Object.entries(node)) {
         if (isRpcMethod(value)) {
             const { rpcMethod, params } = value;
-            const resultType = value.result ? resultTypeName(rpcMethod) : "void";
-            const paramsType = paramsTypeName(rpcMethod);
+            const resultType = value.result ? resultTypeName(value) : "void";
+            const paramsType = paramsTypeName(value);
 
             const paramEntries = params?.properties ? Object.entries(params.properties).filter(([k]) => k !== "sessionId") : [];
             const hasParams = params?.properties && Object.keys(params.properties).length > 0;
@@ -238,8 +237,8 @@ function emitClientSessionApiRegistration(clientSchema: Record<string, unknown>)
         for (const method of methods) {
             const name = handlerMethodName(method.rpcMethod);
             const hasParams = method.params?.properties && Object.keys(method.params.properties).length > 0;
-            const pType = hasParams ? paramsTypeName(method.rpcMethod) : "";
-            const rType = method.result ? resultTypeName(method.rpcMethod) : "void";
+            const pType = hasParams ? paramsTypeName(method) : "";
+            const rType = method.result ? resultTypeName(method) : "void";
 
             if (hasParams) {
                 lines.push(`    ${name}(params: ${pType}): Promise<${rType}>;`);
@@ -276,7 +275,7 @@ function emitClientSessionApiRegistration(clientSchema: Record<string, unknown>)
     for (const [groupName, methods] of groups) {
         for (const method of methods) {
             const name = handlerMethodName(method.rpcMethod);
-            const pType = paramsTypeName(method.rpcMethod);
+            const pType = paramsTypeName(method);
             const hasParams = method.params?.properties && Object.keys(method.params.properties).length > 0;
 
             if (hasParams) {
