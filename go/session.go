@@ -1224,9 +1224,9 @@ func (s *Session) SetModel(ctx context.Context, model string, opts *SetModelOpti
 
 // LogOptions configures optional parameters for [Session.Log].
 type LogOptions struct {
-    // Level sets the log severity. Valid values are [rpc.SessionLogLevelInfo] (default),
-    // [rpc.SessionLogLevelWarning], and [rpc.SessionLogLevelError].
-    Level rpc.SessionLogLevel
+	// Level sets the log severity. Valid values are [rpc.SessionLogLevelInfo] (default),
+	// [rpc.SessionLogLevelWarning], and [rpc.SessionLogLevelError].
+	Level rpc.SessionLogLevel
 	// Ephemeral marks the message as transient so it is not persisted
 	// to the session event log on disk. When nil the server decides the
 	// default; set to a non-nil value to explicitly control persistence.

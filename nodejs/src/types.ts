@@ -651,9 +651,7 @@ export interface PermissionRequest {
 
 import type { PermissionDecisionRequest } from "./generated/rpc.js";
 
-export type PermissionRequestResult =
-    | PermissionDecisionRequest["result"]
-    | { kind: "no-result" };
+export type PermissionRequestResult = PermissionDecisionRequest["result"] | { kind: "no-result" };
 
 export type PermissionHandler = (
     request: PermissionRequest,
