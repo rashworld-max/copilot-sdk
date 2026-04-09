@@ -13,8 +13,6 @@ export { CopilotSession, type AssistantMessageEvent } from "./session.js";
 export {
     defineTool,
     approveAll,
-    isCallToolResult,
-    convertCallToolResult,
     SYSTEM_PROMPT_SECTIONS,
 } from "./types.js";
 export type {
