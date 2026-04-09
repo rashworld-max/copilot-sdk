@@ -98,9 +98,7 @@ class TestAgentSelectionRpc:
             )
 
             # Select the agent
-            select_result = await session.rpc.agent.select(
-                AgentSelectRequest(name="test-agent")
-            )
+            select_result = await session.rpc.agent.select(AgentSelectRequest(name="test-agent"))
             assert select_result.agent is not None
             assert select_result.agent.name == "test-agent"
             assert select_result.agent.display_name == "Test Agent"
