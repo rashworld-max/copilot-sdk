@@ -113,7 +113,7 @@ type Tool struct {
 }
 
 type ToolsListRequest struct {
-	// Optional model ID — when provided, the returned tool list reflects model-specific
+	// Optional model ID ΓÇö when provided, the returned tool list reflects model-specific
 	// overrides
 	Model *string `json:"model,omitempty"`
 }
@@ -1750,7 +1750,13 @@ func (a *HistoryApi) Compact(ctx context.Context) (*HistoryCompact, error) {
 	req := map[string]any{"sessionId": a.sessionID}
 	raw, err := a.client.Request("session.history.compact", req)
 	if err != nil {
-		return nil, err
+		var rpcErr *jsonrpc2.Error
+		if errors.As(err, &rpcErr) && rpcErr.Code == jsonrpc2.ErrMethodNotFound.Code {
+			raw, err = a.client.Request("session.compaction.compact", req)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 	var result HistoryCompact
 	if err := json.Unmarshal(raw, &result); err != nil {

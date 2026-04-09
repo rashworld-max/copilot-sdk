@@ -91,7 +91,7 @@ class TestSessionRpc:
     @pytest.mark.skip(reason="session.model.switchTo not yet implemented in CLI")
     async def test_should_call_session_rpc_model_switch_to(self, ctx: E2ETestContext):
         """Test calling session.rpc.model.switchTo"""
-        from copilot.generated.rpc import SessionModelSwitchToParams
+        from copilot.generated.rpc import ModelSwitchToRequest
 
         session = await ctx.client.create_session(
             on_permission_request=PermissionHandler.approve_all, model="claude-sonnet-4.5"
@@ -103,7 +103,7 @@ class TestSessionRpc:
 
         # Switch to a different model with reasoning effort
         result = await session.rpc.model.switch_to(
-            SessionModelSwitchToParams(model_id="gpt-4.1", reasoning_effort="high")
+            ModelSwitchToRequest(model_id="gpt-4.1", reasoning_effort="high")
         )
         assert result.model_id == "gpt-4.1"
 
@@ -114,7 +114,7 @@ class TestSessionRpc:
     @pytest.mark.asyncio
     async def test_get_and_set_session_mode(self):
         """Test getting and setting session mode"""
-        from copilot.generated.rpc import Mode, SessionModeSetParams
+        from copilot.generated.rpc import ModeSetRequest, SessionMode
 
         client = CopilotClient(SubprocessConfig(cli_path=CLI_PATH, use_stdio=True))
 
@@ -126,21 +126,21 @@ class TestSessionRpc:
 
             # Get initial mode (default should be interactive)
             initial = await session.rpc.mode.get()
-            assert initial.mode == Mode.INTERACTIVE
+            assert initial.mode == SessionMode.INTERACTIVE
 
             # Switch to plan mode
-            plan_result = await session.rpc.mode.set(SessionModeSetParams(mode=Mode.PLAN))
-            assert plan_result.mode == Mode.PLAN
+            plan_result = await session.rpc.mode.set(ModeSetRequest(mode=SessionMode.PLAN))
+            assert plan_result.mode == SessionMode.PLAN
 
             # Verify mode persisted
             after_plan = await session.rpc.mode.get()
-            assert after_plan.mode == Mode.PLAN
+            assert after_plan.mode == SessionMode.PLAN
 
             # Switch back to interactive
             interactive_result = await session.rpc.mode.set(
-                SessionModeSetParams(mode=Mode.INTERACTIVE)
+                ModeSetRequest(mode=SessionMode.INTERACTIVE)
             )
-            assert interactive_result.mode == Mode.INTERACTIVE
+            assert interactive_result.mode == SessionMode.INTERACTIVE
 
             await session.disconnect()
             await client.stop()

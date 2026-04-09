@@ -6,13 +6,13 @@ import pytest
 
 from copilot.generated.rpc import (
     FleetApi,
-    Mode,
     ModeApi,
+    ModeSetRequest,
     PlanApi,
     ServerModelsApi,
     ServerToolsApi,
     SessionFleetStartParams,
-    SessionModeSetParams,
+    SessionMode,
     ToolsListParams,
 )
 
@@ -56,7 +56,7 @@ class TestRpcTimeout:
         client.request = AsyncMock(return_value={"mode": "plan"})
         api = ModeApi(client, "sess-1")
 
-        await api.set(SessionModeSetParams(mode=Mode.PLAN), timeout=120.0)
+        await api.set(ModeSetRequest(mode=SessionMode.PLAN), timeout=120.0)
 
         _, kwargs = client.request.call_args
         assert kwargs["timeout"] == 120.0

@@ -733,7 +733,7 @@ public sealed partial class CopilotSession : IAsyncDisposable
         try
         {
             var result = await handler(context);
-            await Rpc.Ui.HandlePendingElicitationAsync(requestId, new SessionUiHandlePendingElicitationRequestResult
+            await Rpc.Ui.HandlePendingElicitationAsync(requestId, new UiElicitationResponse
             {
                 Action = result.Action,
                 Content = result.Content
@@ -744,9 +744,9 @@ public sealed partial class CopilotSession : IAsyncDisposable
             // User handler can throw any exception — attempt to cancel so the request doesn't hang.
             try
             {
-                await Rpc.Ui.HandlePendingElicitationAsync(requestId, new SessionUiHandlePendingElicitationRequestResult
+                await Rpc.Ui.HandlePendingElicitationAsync(requestId, new UiElicitationResponse
                 {
-                    Action = SessionUiElicitationResultAction.Cancel
+                    Action = UiElicitationAction.Cancel
                 });
             }
             catch (Exception innerEx) when (innerEx is IOException or ObjectDisposedException)
@@ -777,7 +777,7 @@ public sealed partial class CopilotSession : IAsyncDisposable
         public async Task<ElicitationResult> ElicitationAsync(ElicitationParams elicitationParams, CancellationToken cancellationToken)
         {
             session.AssertElicitation();
-            var schema = new SessionUiElicitationRequestRequestedSchema
+            var schema = new UiElicitationSchema
             {
                 Type = elicitationParams.RequestedSchema.Type,
                 Properties = elicitationParams.RequestedSchema.Properties,
@@ -790,7 +790,7 @@ public sealed partial class CopilotSession : IAsyncDisposable
         public async Task<bool> ConfirmAsync(string message, CancellationToken cancellationToken)
         {
             session.AssertElicitation();
-            var schema = new SessionUiElicitationRequestRequestedSchema
+            var schema = new UiElicitationSchema
             {
                 Type = "object",
                 Properties = new Dictionary<string, object>
@@ -800,7 +800,7 @@ public sealed partial class CopilotSession : IAsyncDisposable
                 Required = ["confirmed"]
             };
             var result = await session.Rpc.Ui.ElicitationAsync(message, schema, cancellationToken);
-            if (result.Action == SessionUiElicitationResultAction.Accept
+            if (result.Action == UiElicitationAction.Accept
                 && result.Content != null
                 && result.Content.TryGetValue("confirmed", out var val))
             {
@@ -818,7 +818,7 @@ public sealed partial class CopilotSession : IAsyncDisposable
         public async Task<string?> SelectAsync(string message, string[] options, CancellationToken cancellationToken)
         {
             session.AssertElicitation();
-            var schema = new SessionUiElicitationRequestRequestedSchema
+            var schema = new UiElicitationSchema
             {
                 Type = "object",
                 Properties = new Dictionary<string, object>
@@ -828,7 +828,7 @@ public sealed partial class CopilotSession : IAsyncDisposable
                 Required = ["selection"]
             };
             var result = await session.Rpc.Ui.ElicitationAsync(message, schema, cancellationToken);
-            if (result.Action == SessionUiElicitationResultAction.Accept
+            if (result.Action == UiElicitationAction.Accept
                 && result.Content != null
                 && result.Content.TryGetValue("selection", out var val))
             {
@@ -853,14 +853,14 @@ public sealed partial class CopilotSession : IAsyncDisposable
             if (options?.Format != null) field["format"] = options.Format;
             if (options?.Default != null) field["default"] = options.Default;
 
-            var schema = new SessionUiElicitationRequestRequestedSchema
+            var schema = new UiElicitationSchema
             {
                 Type = "object",
                 Properties = new Dictionary<string, object> { ["value"] = field },
                 Required = ["value"]
             };
             var result = await session.Rpc.Ui.ElicitationAsync(message, schema, cancellationToken);
-            if (result.Action == SessionUiElicitationResultAction.Accept
+            if (result.Action == UiElicitationAction.Accept
                 && result.Content != null
                 && result.Content.TryGetValue("value", out var val))
             {
@@ -1141,12 +1141,12 @@ public sealed partial class CopilotSession : IAsyncDisposable
     /// <example>
     /// <code>
     /// await session.LogAsync("Build completed successfully");
-    /// await session.LogAsync("Disk space low", level: SessionLogRequestLevel.Warning);
-    /// await session.LogAsync("Connection failed", level: SessionLogRequestLevel.Error);
+    /// await session.LogAsync("Disk space low", level: GitHub.Copilot.SDK.Rpc.LogLevel.Warning);
+    /// await session.LogAsync("Connection failed", level: GitHub.Copilot.SDK.Rpc.LogLevel.Error);
     /// await session.LogAsync("Temporary status", ephemeral: true);
     /// </code>
     /// </example>
-    public async Task LogAsync(string message, SessionLogRequestLevel? level = null, bool? ephemeral = null, string? url = null, CancellationToken cancellationToken = default)
+    public async Task LogAsync(string message, GitHub.Copilot.SDK.Rpc.LogLevel? level = null, bool? ephemeral = null, string? url = null, CancellationToken cancellationToken = default)
     {
         await Rpc.LogAsync(message, level, ephemeral, url, cancellationToken);
     }
@@ -1215,17 +1215,17 @@ public sealed partial class CopilotSession : IAsyncDisposable
         _elicitationHandler = null;
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception in broadcast event handler")]
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Unhandled exception in broadcast event handler")]
     private partial void LogBroadcastHandlerError(Exception exception);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception in session event handler")]
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Unhandled exception in session event handler")]
     private partial void LogEventHandlerError(Exception exception);
 
     internal record SendMessageRequest
     {
         public string SessionId { get; init; } = string.Empty;
         public string Prompt { get; init; } = string.Empty;
-        public List<UserMessageDataAttachmentsItem>? Attachments { get; init; }
+        public List<UserMessageAttachment>? Attachments { get; init; }
         public string? Mode { get; init; }
         public string? Traceparent { get; init; }
         public string? Tracestate { get; init; }
@@ -1267,7 +1267,7 @@ public sealed partial class CopilotSession : IAsyncDisposable
     [JsonSerializable(typeof(SendMessageResponse))]
     [JsonSerializable(typeof(SessionAbortRequest))]
     [JsonSerializable(typeof(SessionDestroyRequest))]
-    [JsonSerializable(typeof(UserMessageDataAttachmentsItem))]
+    [JsonSerializable(typeof(UserMessageAttachment))]
     [JsonSerializable(typeof(PreToolUseHookInput))]
     [JsonSerializable(typeof(PreToolUseHookOutput))]
     [JsonSerializable(typeof(PostToolUseHookInput))]

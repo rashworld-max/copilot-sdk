@@ -3,7 +3,7 @@
  * Generated from: api.schema.json
  */
 
-import type { MessageConnection } from "vscode-jsonrpc/node.js";
+import { ResponseError, type MessageConnection } from "vscode-jsonrpc/node.js";
 
 export interface PingResult {
   /**
@@ -1705,8 +1705,16 @@ export function createSessionRpc(connection: MessageConnection, sessionId: strin
         },
         /** @experimental */
         history: {
-            compact: async (): Promise<HistoryCompact> =>
-                connection.sendRequest("session.history.compact", { sessionId }),
+            compact: async (): Promise<HistoryCompact> => {
+                try {
+                    return await connection.sendRequest("session.history.compact", { sessionId });
+                } catch (error) {
+                    if (!(error instanceof ResponseError) || error.code !== -32601) {
+                        throw error;
+                    }
+                    return connection.sendRequest("session.compaction.compact", { sessionId });
+                }
+            },
             truncate: async (params: Omit<HistoryTruncateRequest, "sessionId">): Promise<HistoryTruncateResult> =>
                 connection.sendRequest("session.history.truncate", { sessionId, ...params }),
         },

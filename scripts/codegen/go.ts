@@ -798,27 +798,17 @@ function generateGoSessionEventsCode(schema: JSONSchema7): string {
 
     // Type aliases for types referenced by non-generated SDK code under their short names.
     const TYPE_ALIASES: Record<string, string> = {
-        PermissionRequest: "PermissionRequestedDataPermissionRequest",
-        PermissionRequestKind: "PermissionRequestedDataPermissionRequestKind",
-        PermissionRequestCommand: "PermissionRequestedDataPermissionRequestCommandsItem",
-        PossibleURL: "PermissionRequestedDataPermissionRequestPossibleUrlsItem",
-        Attachment: "UserMessageDataAttachmentsItem",
-        AttachmentType: "UserMessageDataAttachmentsItemType",
+        PermissionRequestCommand: "PermissionRequestShellCommand",
+        PossibleURL: "PermissionRequestShellPossibleUrl",
+        Attachment: "UserMessageAttachment",
+        AttachmentType: "UserMessageAttachmentType",
     };
     const CONST_ALIASES: Record<string, string> = {
-        AttachmentTypeFile: "UserMessageDataAttachmentsItemTypeFile",
-        AttachmentTypeDirectory: "UserMessageDataAttachmentsItemTypeDirectory",
-        AttachmentTypeSelection: "UserMessageDataAttachmentsItemTypeSelection",
-        AttachmentTypeGithubReference: "UserMessageDataAttachmentsItemTypeGithubReference",
-        AttachmentTypeBlob: "UserMessageDataAttachmentsItemTypeBlob",
-        PermissionRequestKindShell: "PermissionRequestedDataPermissionRequestKindShell",
-        PermissionRequestKindWrite: "PermissionRequestedDataPermissionRequestKindWrite",
-        PermissionRequestKindRead: "PermissionRequestedDataPermissionRequestKindRead",
-        PermissionRequestKindMcp: "PermissionRequestedDataPermissionRequestKindMcp",
-        PermissionRequestKindURL: "PermissionRequestedDataPermissionRequestKindURL",
-        PermissionRequestKindMemory: "PermissionRequestedDataPermissionRequestKindMemory",
-        PermissionRequestKindCustomTool: "PermissionRequestedDataPermissionRequestKindCustomTool",
-        PermissionRequestKindHook: "PermissionRequestedDataPermissionRequestKindHook",
+        AttachmentTypeFile: "UserMessageAttachmentTypeFile",
+        AttachmentTypeDirectory: "UserMessageAttachmentTypeDirectory",
+        AttachmentTypeSelection: "UserMessageAttachmentTypeSelection",
+        AttachmentTypeGithubReference: "UserMessageAttachmentTypeGithubReference",
+        AttachmentTypeBlob: "UserMessageAttachmentTypeBlob",
     };
     out.push(`// Type aliases for convenience.`);
     out.push(`type (`);

@@ -1754,7 +1754,7 @@ type UserMessageAttachmentSelectionDetails struct {
 	End UserMessageAttachmentSelectionDetailsEnd `json:"end"`
 }
 
-// A user message attachment — a file, directory, code selection, blob, or GitHub reference
+// A user message attachment ΓÇö a file, directory, code selection, blob, or GitHub reference
 type UserMessageAttachment struct {
 	// Type discriminator
 	Type UserMessageAttachmentType `json:"type"`
@@ -2298,27 +2298,17 @@ const (
 
 // Type aliases for convenience.
 type (
-	PermissionRequest        = PermissionRequestedDataPermissionRequest
-	PermissionRequestKind    = PermissionRequestedDataPermissionRequestKind
-	PermissionRequestCommand = PermissionRequestedDataPermissionRequestCommandsItem
-	PossibleURL              = PermissionRequestedDataPermissionRequestPossibleUrlsItem
-	Attachment               = UserMessageDataAttachmentsItem
-	AttachmentType           = UserMessageDataAttachmentsItemType
+	PermissionRequestCommand = PermissionRequestShellCommand
+	PossibleURL              = PermissionRequestShellPossibleUrl
+	Attachment               = UserMessageAttachment
+	AttachmentType           = UserMessageAttachmentType
 )
 
 // Constant aliases for convenience.
 const (
-	AttachmentTypeFile              = UserMessageDataAttachmentsItemTypeFile
-	AttachmentTypeDirectory         = UserMessageDataAttachmentsItemTypeDirectory
-	AttachmentTypeSelection         = UserMessageDataAttachmentsItemTypeSelection
-	AttachmentTypeGithubReference   = UserMessageDataAttachmentsItemTypeGithubReference
-	AttachmentTypeBlob              = UserMessageDataAttachmentsItemTypeBlob
-	PermissionRequestKindShell      = PermissionRequestedDataPermissionRequestKindShell
-	PermissionRequestKindWrite      = PermissionRequestedDataPermissionRequestKindWrite
-	PermissionRequestKindRead       = PermissionRequestedDataPermissionRequestKindRead
-	PermissionRequestKindMcp        = PermissionRequestedDataPermissionRequestKindMcp
-	PermissionRequestKindURL        = PermissionRequestedDataPermissionRequestKindURL
-	PermissionRequestKindMemory     = PermissionRequestedDataPermissionRequestKindMemory
-	PermissionRequestKindCustomTool = PermissionRequestedDataPermissionRequestKindCustomTool
-	PermissionRequestKindHook       = PermissionRequestedDataPermissionRequestKindHook
+	AttachmentTypeFile            = UserMessageAttachmentTypeFile
+	AttachmentTypeDirectory       = UserMessageAttachmentTypeDirectory
+	AttachmentTypeSelection       = UserMessageAttachmentTypeSelection
+	AttachmentTypeGithubReference = UserMessageAttachmentTypeGithubReference
+	AttachmentTypeBlob            = UserMessageAttachmentTypeBlob
 )
