@@ -1754,7 +1754,7 @@ type UserMessageAttachmentSelectionDetails struct {
 	End UserMessageAttachmentSelectionDetailsEnd `json:"end"`
 }
 
-// A user message attachment ΓÇö a file, directory, code selection, blob, or GitHub reference
+// A user message attachment — a file, directory, code selection, blob, or GitHub reference
 type UserMessageAttachment struct {
 	// Type discriminator
 	Type UserMessageAttachmentType `json:"type"`

@@ -1237,7 +1237,7 @@ public sealed partial class CopilotClient : IDisposable, IAsyncDisposable
                         stderrBuffer.AppendLine(line);
                     }
 
-                    if (logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Debug))
+                    if (logger.IsEnabled(LogLevel.Debug))
                     {
                         logger.LogDebug("[CLI] {Line}", line);
                     }
@@ -1759,7 +1759,7 @@ public sealed partial class CopilotClient : IDisposable, IAsyncDisposable
         {
             public override void TraceEvent(TraceEventCache? eventCache, string source, TraceEventType eventType, int id, string? message)
             {
-                Microsoft.Extensions.Logging.LogLevel level = MapLevel(eventType);
+                LogLevel level = MapLevel(eventType);
                 if (logger.IsEnabled(level))
                 {
                     logger.Log(level, "[{Source}] {Message}", source, message);
@@ -1768,7 +1768,7 @@ public sealed partial class CopilotClient : IDisposable, IAsyncDisposable
 
             public override void TraceEvent(TraceEventCache? eventCache, string source, TraceEventType eventType, int id, string? format, params object?[]? args)
             {
-                Microsoft.Extensions.Logging.LogLevel level = MapLevel(eventType);
+                LogLevel level = MapLevel(eventType);
                 if (logger.IsEnabled(level))
                 {
                     logger.Log(level, "[{Source}] {Message}", source, args is null || args.Length == 0 ? format : string.Format(CultureInfo.InvariantCulture, format ?? "", args));
@@ -1777,7 +1777,7 @@ public sealed partial class CopilotClient : IDisposable, IAsyncDisposable
 
             public override void TraceData(TraceEventCache? eventCache, string source, TraceEventType eventType, int id, object? data)
             {
-                Microsoft.Extensions.Logging.LogLevel level = MapLevel(eventType);
+                LogLevel level = MapLevel(eventType);
                 if (logger.IsEnabled(level))
                 {
                     logger.Log(level, "[{Source}] {Data}", source, data);
@@ -1786,7 +1786,7 @@ public sealed partial class CopilotClient : IDisposable, IAsyncDisposable
 
             public override void TraceData(TraceEventCache? eventCache, string source, TraceEventType eventType, int id, params object?[]? data)
             {
-                Microsoft.Extensions.Logging.LogLevel level = MapLevel(eventType);
+                LogLevel level = MapLevel(eventType);
                 if (logger.IsEnabled(level))
                 {
                     logger.Log(level, "[{Source}] {Data}", source, data is null ? null : string.Join(", ", data));
@@ -1795,7 +1795,7 @@ public sealed partial class CopilotClient : IDisposable, IAsyncDisposable
 
             public override void Write(string? message)
             {
-                if (logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Trace))
+                if (logger.IsEnabled(LogLevel.Trace))
                 {
                     logger.LogTrace("{Message}", message);
                 }
@@ -1803,22 +1803,22 @@ public sealed partial class CopilotClient : IDisposable, IAsyncDisposable
 
             public override void WriteLine(string? message)
             {
-                if (logger.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Trace))
+                if (logger.IsEnabled(LogLevel.Trace))
                 {
                     logger.LogTrace("{Message}", message);
                 }
             }
 
-            private static Microsoft.Extensions.Logging.LogLevel MapLevel(TraceEventType eventType)
+            private static LogLevel MapLevel(TraceEventType eventType)
             {
                 return eventType switch
                 {
-                    TraceEventType.Critical => Microsoft.Extensions.Logging.LogLevel.Critical,
-                    TraceEventType.Error => Microsoft.Extensions.Logging.LogLevel.Error,
-                    TraceEventType.Warning => Microsoft.Extensions.Logging.LogLevel.Warning,
-                    TraceEventType.Information => Microsoft.Extensions.Logging.LogLevel.Information,
-                    TraceEventType.Verbose => Microsoft.Extensions.Logging.LogLevel.Debug,
-                    _ => Microsoft.Extensions.Logging.LogLevel.Trace
+                    TraceEventType.Critical => LogLevel.Critical,
+                    TraceEventType.Error => LogLevel.Error,
+                    TraceEventType.Warning => LogLevel.Warning,
+                    TraceEventType.Information => LogLevel.Information,
+                    TraceEventType.Verbose => LogLevel.Debug,
+                    _ => LogLevel.Trace
                 };
             }
         }

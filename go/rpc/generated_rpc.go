@@ -113,7 +113,7 @@ type Tool struct {
 }
 
 type ToolsListRequest struct {
-	// Optional model ID ΓÇö when provided, the returned tool list reflects model-specific
+	// Optional model ID — when provided, the returned tool list reflects model-specific
 	// overrides
 	Model *string `json:"model,omitempty"`
 }
@@ -212,6 +212,26 @@ type MCPConfigUpdateConfig struct {
 type MCPConfigRemoveRequest struct {
 	// Name of the MCP server to remove
 	Name string `json:"name"`
+}
+
+type MCPDiscoverResult struct {
+	// MCP servers discovered from all sources
+	Servers []DiscoveredMCPServer `json:"servers"`
+}
+
+type DiscoveredMCPServer struct {
+	// Whether the server is enabled (not in the disabled list)
+	Enabled bool `json:"enabled"`
+	// Server name (config key)
+	Name   string                    `json:"name"`
+	Source DiscoveredMCPServerSource `json:"source"`
+	// Server type: local, stdio, http, or sse
+	Type *string `json:"type,omitempty"`
+}
+
+type MCPDiscoverRequest struct {
+	// Working directory used as context for discovery (e.g., plugin resolution)
+	WorkingDirectory *string `json:"workingDirectory,omitempty"`
 }
 
 type SessionFSSetProviderResult struct {
@@ -511,10 +531,10 @@ type MCPReload struct {
 // Experimental: PluginList is part of an experimental API and may change or be removed.
 type PluginList struct {
 	// Installed plugins
-	Plugins []Plugin `json:"plugins"`
+	Plugins []PluginElement `json:"plugins"`
 }
 
-type Plugin struct {
+type PluginElement struct {
 	// Whether the plugin is currently enabled
 	Enabled bool `json:"enabled"`
 	// Marketplace the plugin came from
@@ -572,19 +592,26 @@ type HandleToolCallResult struct {
 }
 
 type ToolsHandlePendingToolCallRequest struct {
-	Error     *string                     `json:"error,omitempty"`
+	// Error message if the tool call failed
+	Error *string `json:"error,omitempty"`
+	// Request ID of the pending tool call
 	RequestID string                      `json:"requestId"`
 	Result    *ToolsHandlePendingToolCall `json:"result"`
 }
 
 type ToolCallResult struct {
-	Error            *string        `json:"error,omitempty"`
-	ResultType       *string        `json:"resultType,omitempty"`
-	TextResultForLlm string         `json:"textResultForLlm"`
-	ToolTelemetry    map[string]any `json:"toolTelemetry,omitempty"`
+	// Error message if the tool call failed
+	Error *string `json:"error,omitempty"`
+	// Type of the tool result
+	ResultType *string `json:"resultType,omitempty"`
+	// Text result to send back to the LLM
+	TextResultForLlm string `json:"textResultForLlm"`
+	// Telemetry data from tool execution
+	ToolTelemetry map[string]any `json:"toolTelemetry,omitempty"`
 }
 
 type CommandsHandlePendingCommandResult struct {
+	// Whether the command was handled successfully
 	Success bool `json:"success"`
 }
 
@@ -670,17 +697,36 @@ type PermissionRequestResult struct {
 }
 
 type PermissionDecisionRequest struct {
+	// Request ID of the pending permission request
 	RequestID string             `json:"requestId"`
 	Result    PermissionDecision `json:"result"`
 }
 
 type PermissionDecision struct {
-	Kind      Kind    `json:"kind"`
-	Rules     []any   `json:"rules,omitempty"`
-	Feedback  *string `json:"feedback,omitempty"`
-	Message   *string `json:"message,omitempty"`
-	Path      *string `json:"path,omitempty"`
-	Interrupt *bool   `json:"interrupt,omitempty"`
+	// The permission request was approved
+	//
+	// Denied because approval rules explicitly blocked it
+	//
+	// Denied because no approval rule matched and user confirmation was unavailable
+	//
+	// Denied by the user during an interactive prompt
+	//
+	// Denied by the organization's content exclusion policy
+	//
+	// Denied by a permission request hook registered by an extension or plugin
+	Kind Kind `json:"kind"`
+	// Rules that denied the request
+	Rules []any `json:"rules,omitempty"`
+	// Optional feedback from the user explaining the denial
+	Feedback *string `json:"feedback,omitempty"`
+	// Human-readable explanation of why the path was excluded
+	//
+	// Optional message from the hook explaining the denial
+	Message *string `json:"message,omitempty"`
+	// File path that triggered the exclusion
+	Path *string `json:"path,omitempty"`
+	// Whether to interrupt the current agent turn
+	Interrupt *bool `json:"interrupt,omitempty"`
 }
 
 type LogResult struct {
@@ -690,8 +736,8 @@ type LogResult struct {
 
 type LogRequest struct {
 	// When true, the message is transient and not persisted to the session event log on disk
-	Ephemeral *bool     `json:"ephemeral,omitempty"`
-	Level     *LogLevel `json:"level,omitempty"`
+	Ephemeral *bool            `json:"ephemeral,omitempty"`
+	Level     *SessionLogLevel `json:"level,omitempty"`
 	// Human-readable message
 	Message string `json:"message"`
 	// Optional URL the user can open in their browser for more details
@@ -725,12 +771,29 @@ type ShellKillRequest struct {
 
 // Experimental: HistoryCompact is part of an experimental API and may change or be removed.
 type HistoryCompact struct {
+	ContextWindow *HistoryCompactContextWindow `json:"contextWindow,omitempty"`
 	// Number of messages removed during compaction
 	MessagesRemoved float64 `json:"messagesRemoved"`
 	// Whether compaction completed successfully
 	Success bool `json:"success"`
 	// Number of tokens freed by compaction
 	TokensRemoved float64 `json:"tokensRemoved"`
+}
+
+// Post-compaction context window usage breakdown
+type HistoryCompactContextWindow struct {
+	// Token count from non-system messages (user, assistant, tool)
+	ConversationTokens *float64 `json:"conversationTokens,omitempty"`
+	// Current total tokens in the context window (system + conversation + tool definitions)
+	CurrentTokens float64 `json:"currentTokens"`
+	// Current number of messages in the conversation
+	MessagesLength float64 `json:"messagesLength"`
+	// Token count from system message(s)
+	SystemTokens *float64 `json:"systemTokens,omitempty"`
+	// Maximum token count for the model's context window
+	TokenLimit float64 `json:"tokenLimit"`
+	// Token count from tool definitions
+	ToolDefinitionsTokens *float64 `json:"toolDefinitionsTokens,omitempty"`
 }
 
 // Experimental: HistoryTruncateResult is part of an experimental API and may change or be removed.
@@ -743,6 +806,63 @@ type HistoryTruncateResult struct {
 type HistoryTruncateRequest struct {
 	// Event ID to truncate to. This event and all events after it are removed from the session.
 	EventID string `json:"eventId"`
+}
+
+// Experimental: UsageMetrics is part of an experimental API and may change or be removed.
+type UsageMetrics struct {
+	CodeChanges UsageMetricsCodeChanges `json:"codeChanges"`
+	// Currently active model identifier
+	CurrentModel *string `json:"currentModel,omitempty"`
+	// Input tokens from the most recent main-agent API call
+	LastCallInputTokens int64 `json:"lastCallInputTokens"`
+	// Output tokens from the most recent main-agent API call
+	LastCallOutputTokens int64 `json:"lastCallOutputTokens"`
+	// Per-model token and request metrics, keyed by model identifier
+	ModelMetrics map[string]UsageMetricsModelMetric `json:"modelMetrics"`
+	// Session start timestamp (epoch milliseconds)
+	SessionStartTime int64 `json:"sessionStartTime"`
+	// Total time spent in model API calls (milliseconds)
+	TotalAPIDurationMS float64 `json:"totalApiDurationMs"`
+	// Total user-initiated premium request cost across all models (may be fractional due to
+	// multipliers)
+	TotalPremiumRequestCost float64 `json:"totalPremiumRequestCost"`
+	// Raw count of user-initiated API requests
+	TotalUserRequests int64 `json:"totalUserRequests"`
+}
+
+// Aggregated code change metrics
+type UsageMetricsCodeChanges struct {
+	// Number of distinct files modified
+	FilesModifiedCount int64 `json:"filesModifiedCount"`
+	// Total lines of code added
+	LinesAdded int64 `json:"linesAdded"`
+	// Total lines of code removed
+	LinesRemoved int64 `json:"linesRemoved"`
+}
+
+type UsageMetricsModelMetric struct {
+	Requests UsageMetricsModelMetricRequests `json:"requests"`
+	Usage    UsageMetricsModelMetricUsage    `json:"usage"`
+}
+
+// Request count and cost metrics for this model
+type UsageMetricsModelMetricRequests struct {
+	// User-initiated premium request cost (with multiplier applied)
+	Cost float64 `json:"cost"`
+	// Number of API requests made with this model
+	Count int64 `json:"count"`
+}
+
+// Token usage metrics for this model
+type UsageMetricsModelMetricUsage struct {
+	// Total tokens read from prompt cache
+	CacheReadTokens int64 `json:"cacheReadTokens"`
+	// Total tokens written to prompt cache
+	CacheWriteTokens int64 `json:"cacheWriteTokens"`
+	// Total input tokens consumed
+	InputTokens int64 `json:"inputTokens"`
+	// Total output tokens produced
+	OutputTokens int64 `json:"outputTokens"`
 }
 
 type SessionFSReadFileResult struct {
@@ -889,6 +1009,16 @@ const (
 	MCPConfigTypeStdio MCPConfigType = "stdio"
 )
 
+// Configuration source
+type DiscoveredMCPServerSource string
+
+const (
+	DiscoveredMCPServerSourceBuiltin   DiscoveredMCPServerSource = "builtin"
+	DiscoveredMCPServerSourceUser      DiscoveredMCPServerSource = "user"
+	DiscoveredMCPServerSourcePlugin    DiscoveredMCPServerSource = "plugin"
+	DiscoveredMCPServerSourceWorkspace DiscoveredMCPServerSource = "workspace"
+)
+
 // Path conventions used by this filesystem
 type SessionFSSetProviderConventions string
 
@@ -922,8 +1052,8 @@ const (
 type ExtensionSource string
 
 const (
-	ExtensionSourceProject ExtensionSource = "project"
 	ExtensionSourceUser    ExtensionSource = "user"
+	ExtensionSourceProject ExtensionSource = "project"
 )
 
 // Current status: running, disabled, failed, or starting
@@ -989,12 +1119,12 @@ const (
 
 // Log severity level. Determines how the message is displayed in the timeline. Defaults to
 // "info".
-type LogLevel string
+type SessionLogLevel string
 
 const (
-	LogLevelError   LogLevel = "error"
-	LogLevelInfo    LogLevel = "info"
-	LogLevelWarning LogLevel = "warning"
+	SessionLogLevelError   SessionLogLevel = "error"
+	SessionLogLevelInfo    SessionLogLevel = "info"
+	SessionLogLevelWarning SessionLogLevel = "warning"
 )
 
 // Signal to send (default: SIGTERM)
@@ -1019,6 +1149,7 @@ type MCPConfigFilterMapping struct {
 	EnumMap map[string]MCPConfigFilterMappingString
 }
 
+// Tool call result (string or expanded result object)
 type ToolsHandlePendingToolCall struct {
 	String         *string
 	ToolCallResult *ToolCallResult
@@ -1078,6 +1209,18 @@ func (a *ServerAccountApi) GetQuota(ctx context.Context) (*AccountQuota, error) 
 }
 
 type ServerMcpApi serverApi
+
+func (a *ServerMcpApi) Discover(ctx context.Context, params *MCPDiscoverRequest) (*MCPDiscoverResult, error) {
+	raw, err := a.client.Request("mcp.discover", params)
+	if err != nil {
+		return nil, err
+	}
+	var result MCPDiscoverResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
 
 type ServerSessionFsApi serverApi
 
@@ -1750,13 +1893,7 @@ func (a *HistoryApi) Compact(ctx context.Context) (*HistoryCompact, error) {
 	req := map[string]any{"sessionId": a.sessionID}
 	raw, err := a.client.Request("session.history.compact", req)
 	if err != nil {
-		var rpcErr *jsonrpc2.Error
-		if errors.As(err, &rpcErr) && rpcErr.Code == jsonrpc2.ErrMethodNotFound.Code {
-			raw, err = a.client.Request("session.compaction.compact", req)
-		}
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	var result HistoryCompact
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -1775,6 +1912,22 @@ func (a *HistoryApi) Truncate(ctx context.Context, params *HistoryTruncateReques
 		return nil, err
 	}
 	var result HistoryTruncateResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// Experimental: UsageApi contains experimental APIs that may change or be removed.
+type UsageApi sessionApi
+
+func (a *UsageApi) GetMetrics(ctx context.Context) (*UsageMetrics, error) {
+	req := map[string]any{"sessionId": a.sessionID}
+	raw, err := a.client.Request("session.usage.getMetrics", req)
+	if err != nil {
+		return nil, err
+	}
+	var result UsageMetrics
 	if err := json.Unmarshal(raw, &result); err != nil {
 		return nil, err
 	}
@@ -1801,6 +1954,7 @@ type SessionRpc struct {
 	Permissions *PermissionsApi
 	Shell       *ShellApi
 	History     *HistoryApi
+	Usage       *UsageApi
 }
 
 func (a *SessionRpc) Log(ctx context.Context, params *LogRequest) (*LogResult, error) {
@@ -1847,6 +2001,7 @@ func NewSessionRpc(client *jsonrpc2.Client, sessionID string) *SessionRpc {
 	r.Permissions = (*PermissionsApi)(&r.common)
 	r.Shell = (*ShellApi)(&r.common)
 	r.History = (*HistoryApi)(&r.common)
+	r.Usage = (*UsageApi)(&r.common)
 	return r
 }
 

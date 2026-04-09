@@ -1141,12 +1141,12 @@ public sealed partial class CopilotSession : IAsyncDisposable
     /// <example>
     /// <code>
     /// await session.LogAsync("Build completed successfully");
-    /// await session.LogAsync("Disk space low", level: GitHub.Copilot.SDK.Rpc.LogLevel.Warning);
-    /// await session.LogAsync("Connection failed", level: GitHub.Copilot.SDK.Rpc.LogLevel.Error);
+    /// await session.LogAsync("Disk space low", level: SessionLogLevel.Warning);
+    /// await session.LogAsync("Connection failed", level: SessionLogLevel.Error);
     /// await session.LogAsync("Temporary status", ephemeral: true);
     /// </code>
     /// </example>
-    public async Task LogAsync(string message, GitHub.Copilot.SDK.Rpc.LogLevel? level = null, bool? ephemeral = null, string? url = null, CancellationToken cancellationToken = default)
+    public async Task LogAsync(string message, SessionLogLevel? level = null, bool? ephemeral = null, string? url = null, CancellationToken cancellationToken = default)
     {
         await Rpc.LogAsync(message, level, ephemeral, url, cancellationToken);
     }
@@ -1215,10 +1215,10 @@ public sealed partial class CopilotSession : IAsyncDisposable
         _elicitationHandler = null;
     }
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Unhandled exception in broadcast event handler")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception in broadcast event handler")]
     private partial void LogBroadcastHandlerError(Exception exception);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Unhandled exception in session event handler")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception in session event handler")]
     private partial void LogEventHandlerError(Exception exception);
 
     internal record SendMessageRequest

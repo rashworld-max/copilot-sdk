@@ -3,7 +3,7 @@
  * Generated from: api.schema.json
  */
 
-import { ResponseError, type MessageConnection } from "vscode-jsonrpc/node.js";
+import type { MessageConnection } from "vscode-jsonrpc/node.js";
 
 export interface PingResult {
   /**
@@ -356,6 +356,38 @@ export interface McpConfigRemoveRequest {
    * Name of the MCP server to remove
    */
   name: string;
+}
+
+export interface McpDiscoverResult {
+  /**
+   * MCP servers discovered from all sources
+   */
+  servers: DiscoveredMcpServer[];
+}
+export interface DiscoveredMcpServer {
+  /**
+   * Server name (config key)
+   */
+  name: string;
+  /**
+   * Server type: local, stdio, http, or sse
+   */
+  type?: string;
+  /**
+   * Configuration source
+   */
+  source: "user" | "workspace" | "plugin" | "builtin";
+  /**
+   * Whether the server is enabled (not in the disabled list)
+   */
+  enabled: boolean;
+}
+
+export interface McpDiscoverRequest {
+  /**
+   * Working directory used as context for discovery (e.g., plugin resolution)
+   */
+  workingDirectory?: string;
 }
 
 export interface SessionFsSetProviderResult {
@@ -1024,20 +1056,44 @@ export interface ToolsHandlePendingToolCallRequest {
    * Target session identifier
    */
   sessionId: string;
+  /**
+   * Request ID of the pending tool call
+   */
   requestId: string;
+  /**
+   * Tool call result (string or expanded result object)
+   */
   result?: string | ToolCallResult;
+  /**
+   * Error message if the tool call failed
+   */
   error?: string;
 }
 export interface ToolCallResult {
+  /**
+   * Text result to send back to the LLM
+   */
   textResultForLlm: string;
+  /**
+   * Type of the tool result
+   */
   resultType?: string;
+  /**
+   * Error message if the tool call failed
+   */
   error?: string;
+  /**
+   * Telemetry data from tool execution
+   */
   toolTelemetry?: {
     [k: string]: unknown;
   };
 }
 
 export interface CommandsHandlePendingCommandResult {
+  /**
+   * Whether the command was handled successfully
+   */
   success: boolean;
 }
 
@@ -1188,27 +1244,63 @@ export interface PermissionRequestResult {
 
 export type PermissionDecision =
   | {
+      /**
+       * The permission request was approved
+       */
       kind: "approved";
     }
 | {
+      /**
+       * Denied because approval rules explicitly blocked it
+       */
       kind: "denied-by-rules";
+      /**
+       * Rules that denied the request
+       */
       rules: unknown[];
     }
   | {
+      /**
+       * Denied because no approval rule matched and user confirmation was unavailable
+       */
       kind: "denied-no-approval-rule-and-could-not-request-from-user";
     }
   | {
+      /**
+       * Denied by the user during an interactive prompt
+       */
       kind: "denied-interactively-by-user";
+      /**
+       * Optional feedback from the user explaining the denial
+       */
       feedback?: string;
     }
   | {
+      /**
+       * Denied by the organization's content exclusion policy
+       */
       kind: "denied-by-content-exclusion-policy";
+      /**
+       * File path that triggered the exclusion
+       */
       path: string;
+      /**
+       * Human-readable explanation of why the path was excluded
+       */
       message: string;
     }
   | {
+      /**
+       * Denied by a permission request hook registered by an extension or plugin
+       */
       kind: "denied-by-permission-request-hook";
+      /**
+       * Optional message from the hook explaining the denial
+       */
       message?: string;
+      /**
+       * Whether to interrupt the current agent turn
+       */
       interrupt?: boolean;
     };
 
@@ -1217,6 +1309,9 @@ export interface PermissionDecisionRequest {
    * Target session identifier
    */
   sessionId: string;
+  /**
+   * Request ID of the pending permission request
+   */
   requestId: string;
   result: PermissionDecision;
 }
@@ -1228,6 +1323,10 @@ export interface LogResult {
   eventId: string;
 }
 
+/**
+ * Log severity level. Determines how the message is displayed in the timeline. Defaults to "info".
+ */
+export type SessionLogLevel = "info" | "warning" | "error";
 export interface LogRequest {
   /**
    * Target session identifier
@@ -1237,10 +1336,7 @@ export interface LogRequest {
    * Human-readable message
    */
   message: string;
-  /**
-   * Log severity level. Determines how the message is displayed in the timeline. Defaults to "info".
-   */
-  level?: "info" | "warning" | "error";
+  level?: SessionLogLevel;
   /**
    * When true, the message is transient and not persisted to the session event log on disk
    */
@@ -1313,6 +1409,35 @@ export interface HistoryCompact {
    * Number of messages removed during compaction
    */
   messagesRemoved: number;
+  /**
+   * Post-compaction context window usage breakdown
+   */
+  contextWindow?: {
+    /**
+     * Maximum token count for the model's context window
+     */
+    tokenLimit: number;
+    /**
+     * Current total tokens in the context window (system + conversation + tool definitions)
+     */
+    currentTokens: number;
+    /**
+     * Current number of messages in the conversation
+     */
+    messagesLength: number;
+    /**
+     * Token count from system message(s)
+     */
+    systemTokens?: number;
+    /**
+     * Token count from non-system messages (user, assistant, tool)
+     */
+    conversationTokens?: number;
+    /**
+     * Token count from tool definitions
+     */
+    toolDefinitionsTokens?: number;
+  };
 }
 
 /** @experimental */
@@ -1341,6 +1466,104 @@ export interface HistoryTruncateRequest {
    * Event ID to truncate to. This event and all events after it are removed from the session.
    */
   eventId: string;
+}
+
+/** @experimental */
+export interface UsageMetrics {
+  /**
+   * Total user-initiated premium request cost across all models (may be fractional due to multipliers)
+   */
+  totalPremiumRequestCost: number;
+  /**
+   * Raw count of user-initiated API requests
+   */
+  totalUserRequests: number;
+  /**
+   * Total time spent in model API calls (milliseconds)
+   */
+  totalApiDurationMs: number;
+  /**
+   * Session start timestamp (epoch milliseconds)
+   */
+  sessionStartTime: number;
+  /**
+   * Aggregated code change metrics
+   */
+  codeChanges: {
+    /**
+     * Total lines of code added
+     */
+    linesAdded: number;
+    /**
+     * Total lines of code removed
+     */
+    linesRemoved: number;
+    /**
+     * Number of distinct files modified
+     */
+    filesModifiedCount: number;
+  };
+  /**
+   * Per-model token and request metrics, keyed by model identifier
+   */
+  modelMetrics: {
+    [k: string]: {
+      /**
+       * Request count and cost metrics for this model
+       */
+      requests: {
+        /**
+         * Number of API requests made with this model
+         */
+        count: number;
+        /**
+         * User-initiated premium request cost (with multiplier applied)
+         */
+        cost: number;
+      };
+      /**
+       * Token usage metrics for this model
+       */
+      usage: {
+        /**
+         * Total input tokens consumed
+         */
+        inputTokens: number;
+        /**
+         * Total output tokens produced
+         */
+        outputTokens: number;
+        /**
+         * Total tokens read from prompt cache
+         */
+        cacheReadTokens: number;
+        /**
+         * Total tokens written to prompt cache
+         */
+        cacheWriteTokens: number;
+      };
+    };
+  };
+  /**
+   * Currently active model identifier
+   */
+  currentModel?: string;
+  /**
+   * Input tokens from the most recent main-agent API call
+   */
+  lastCallInputTokens: number;
+  /**
+   * Output tokens from the most recent main-agent API call
+   */
+  lastCallOutputTokens: number;
+}
+
+/** @experimental */
+export interface SessionUsageGetMetricsRequest {
+  /**
+   * Target session identifier
+   */
+  sessionId: string;
 }
 
 export interface SessionFsReadFileResult {
@@ -1577,6 +1800,8 @@ export function createServerRpc(connection: MessageConnection) {
                 remove: async (params: McpConfigRemoveRequest): Promise<void> =>
                     connection.sendRequest("mcp.config.remove", params),
             },
+            discover: async (params: McpDiscoverRequest): Promise<McpDiscoverResult> =>
+                connection.sendRequest("mcp.discover", params),
         },
         sessionFs: {
             setProvider: async (params: SessionFsSetProviderRequest): Promise<SessionFsSetProviderResult> =>
@@ -1705,18 +1930,15 @@ export function createSessionRpc(connection: MessageConnection, sessionId: strin
         },
         /** @experimental */
         history: {
-            compact: async (): Promise<HistoryCompact> => {
-                try {
-                    return await connection.sendRequest("session.history.compact", { sessionId });
-                } catch (error) {
-                    if (!(error instanceof ResponseError) || error.code !== -32601) {
-                        throw error;
-                    }
-                    return connection.sendRequest("session.compaction.compact", { sessionId });
-                }
-            },
+            compact: async (): Promise<HistoryCompact> =>
+                connection.sendRequest("session.history.compact", { sessionId }),
             truncate: async (params: Omit<HistoryTruncateRequest, "sessionId">): Promise<HistoryTruncateResult> =>
                 connection.sendRequest("session.history.truncate", { sessionId, ...params }),
+        },
+        /** @experimental */
+        usage: {
+            getMetrics: async (): Promise<UsageMetrics> =>
+                connection.sendRequest("session.usage.getMetrics", { sessionId }),
         },
     };
 }

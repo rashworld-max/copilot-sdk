@@ -26,12 +26,12 @@ from .generated.rpc import (
     CommandsHandlePendingCommandRequest,
     HandlePendingElicitationRequest,
     Kind,
-    LogLevel,
     LogRequest,
     ModelSwitchToRequest,
     PermissionDecision,
     PermissionDecisionRequest,
     RequestedSchemaType,
+    SessionLogLevel,
     SessionFsHandler,
     SessionRpc,
     ToolCallResult,
@@ -1979,7 +1979,7 @@ class CopilotSession:
         """
         params = LogRequest(
             message=message,
-            level=LogLevel(level) if level is not None else None,
+            level=SessionLogLevel(level) if level is not None else None,
             ephemeral=ephemeral,
         )
         await self.rpc.log(params)

@@ -1224,9 +1224,9 @@ func (s *Session) SetModel(ctx context.Context, model string, opts *SetModelOpti
 
 // LogOptions configures optional parameters for [Session.Log].
 type LogOptions struct {
-	// Level sets the log severity. Valid values are [rpc.LogLevelInfo] (default),
-	// [rpc.LogLevelWarning], and [rpc.LogLevelError].
-	Level rpc.LogLevel
+    // Level sets the log severity. Valid values are [rpc.SessionLogLevelInfo] (default),
+    // [rpc.SessionLogLevelWarning], and [rpc.SessionLogLevelError].
+    Level rpc.SessionLogLevel
 	// Ephemeral marks the message as transient so it is not persisted
 	// to the session event log on disk. When nil the server decides the
 	// default; set to a non-nil value to explicitly control persistence.
@@ -1245,7 +1245,7 @@ type LogOptions struct {
 //	session.Log(ctx, "Processing started")
 //
 //	// Warning with options
-//	session.Log(ctx, "Rate limit approaching", &copilot.LogOptions{Level: rpc.LogLevelWarning})
+//	session.Log(ctx, "Rate limit approaching", &copilot.LogOptions{Level: rpc.SessionLogLevelWarning})
 //
 //	// Ephemeral message (not persisted)
 //	session.Log(ctx, "Working...", &copilot.LogOptions{Ephemeral: copilot.Bool(true)})
