@@ -14,6 +14,7 @@ import {
     getApiSchemaPath,
     getRpcSchemaTypeName,
     getSessionEventsSchemaPath,
+    hoistTitledSchemas,
     isRpcMethod,
     postProcessSchema,
     writeGeneratedFile,
@@ -117,6 +118,59 @@ function modernizePython(code: string): string {
     });
 
     return code;
+}
+
+function collapsePlaceholderPythonDataclasses(code: string): string {
+    const classBlockRe = /(@dataclass\r?\nclass\s+(\w+):[\s\S]*?)(?=^@dataclass|^class\s+\w+|^def\s+\w+|\Z)/gm;
+    const matches = [...code.matchAll(classBlockRe)].map((match) => ({
+        fullBlock: match[1],
+        name: match[2],
+        normalizedBody: normalizePythonDataclassBlock(match[1], match[2]),
+    }));
+    const groups = new Map<string, typeof matches>();
+
+    for (const match of matches) {
+        const group = groups.get(match.normalizedBody) ?? [];
+        group.push(match);
+        groups.set(match.normalizedBody, group);
+    }
+
+    for (const group of groups.values()) {
+        if (group.length < 2) continue;
+
+        const canonical = chooseCanonicalPlaceholderDuplicate(group.map(({ name }) => name));
+        if (!canonical) continue;
+
+        for (const duplicate of group) {
+            if (duplicate.name === canonical) continue;
+            if (!isPlaceholderTypeName(duplicate.name)) continue;
+
+            code = code.replace(duplicate.fullBlock, "");
+            code = code.replace(new RegExp(`\\b${duplicate.name}\\b`, "g"), canonical);
+        }
+    }
+
+    return code.replace(/\n{3,}/g, "\n\n");
+}
+
+function normalizePythonDataclassBlock(block: string, name: string): string {
+    return block
+        .replace(/^@dataclass\r?\nclass\s+\w+:/, "@dataclass\nclass:")
+        .replace(new RegExp(`\\b${name}\\b`, "g"), "SelfType")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .join("\n");
+}
+
+function chooseCanonicalPlaceholderDuplicate(names: string[]): string | undefined {
+    const specificNames = names.filter((name) => !isPlaceholderTypeName(name));
+    if (specificNames.length === 0) return undefined;
+    return specificNames.sort((left, right) => right.length - left.length || left.localeCompare(right))[0];
+}
+
+function isPlaceholderTypeName(name: string): boolean {
+    return name.endsWith("Class");
 }
 
 function toSnakeCase(s: string): string {
@@ -251,10 +305,18 @@ async function generateRpc(schemaPath?: string): Promise<void> {
         }
     }
 
+    const { rootDefinitions, sharedDefinitions } = hoistTitledSchemas(combinedSchema.definitions! as Record<string, JSONSchema7>);
+
     // Generate types via quicktype
     const schemaInput = new JSONSchemaInput(new FetchingJSONSchemaStore());
-    for (const [name, def] of Object.entries(combinedSchema.definitions!)) {
-        await schemaInput.addSource({ name, schema: JSON.stringify(def) });
+    for (const [name, def] of Object.entries(rootDefinitions)) {
+        await schemaInput.addSource({
+            name,
+            schema: JSON.stringify({
+                ...def,
+                definitions: sharedDefinitions,
+            }),
+        });
     }
 
     const inputData = new InputData();
@@ -275,6 +337,7 @@ async function generateRpc(schemaPath?: string): Promise<void> {
     typesCode = typesCode.replace(/^(\s*)pass\n\n(\s*@staticmethod)/gm, "$2");
     // Modernize to Python 3.11+ syntax
     typesCode = modernizePython(typesCode);
+    typesCode = collapsePlaceholderPythonDataclasses(typesCode);
 
     // Annotate experimental data types
     const experimentalTypeNames = new Set<string>();
@@ -282,7 +345,7 @@ async function generateRpc(schemaPath?: string): Promise<void> {
         if (method.stability !== "experimental") continue;
         experimentalTypeNames.add(pythonResultTypeName(method));
         const paramsTypeName = pythonParamsTypeName(method);
-        if (combinedSchema.definitions![paramsTypeName]) {
+        if (rootDefinitions[paramsTypeName]) {
             experimentalTypeNames.add(paramsTypeName);
         }
     }

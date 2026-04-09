@@ -148,6 +148,98 @@ export function applyTitleSuggestions<T>(value: T): T {
     return value;
 }
 
+export function hoistTitledSchemas(
+    rootDefinitions: Record<string, JSONSchema7>
+): { rootDefinitions: Record<string, JSONSchema7>; sharedDefinitions: Record<string, JSONSchema7> } {
+    const sharedDefinitions: Record<string, JSONSchema7> = {};
+    const processedRoots: Record<string, JSONSchema7> = {};
+
+    for (const [rootName, definition] of Object.entries(rootDefinitions)) {
+        processedRoots[rootName] = visitSchema(definition, rootName, sharedDefinitions);
+    }
+
+    return { rootDefinitions: processedRoots, sharedDefinitions };
+}
+
+function visitSchema(
+    schema: JSONSchema7,
+    rootName: string,
+    sharedDefinitions: Record<string, JSONSchema7>
+): JSONSchema7 {
+    const result: JSONSchema7 = { ...schema };
+
+    if (result.properties) {
+        result.properties = Object.fromEntries(
+            Object.entries(result.properties).map(([key, value]) => [
+                key,
+                typeof value === "object" && value !== null && !Array.isArray(value)
+                    ? visitSchema(value as JSONSchema7, rootName, sharedDefinitions)
+                    : value,
+            ])
+        );
+    }
+
+    if (result.items) {
+        if (Array.isArray(result.items)) {
+            result.items = result.items.map((item) =>
+                typeof item === "object" && item !== null && !Array.isArray(item)
+                    ? visitSchema(item as JSONSchema7, rootName, sharedDefinitions)
+                    : item
+            ) as JSONSchema7Definition[];
+        } else if (typeof result.items === "object" && result.items !== null) {
+            result.items = visitSchema(result.items as JSONSchema7, rootName, sharedDefinitions);
+        }
+    }
+
+    if (typeof result.additionalProperties === "object" && result.additionalProperties !== null) {
+        result.additionalProperties = visitSchema(result.additionalProperties as JSONSchema7, rootName, sharedDefinitions);
+    }
+
+    for (const combiner of ["anyOf", "allOf", "oneOf"] as const) {
+        if (result[combiner]) {
+            result[combiner] = result[combiner]!.map((item) =>
+                typeof item === "object" && item !== null && !Array.isArray(item)
+                    ? visitSchema(item as JSONSchema7, rootName, sharedDefinitions)
+                    : item
+            ) as JSONSchema7Definition[];
+        }
+    }
+
+    if (typeof result.title === "string" && result.title !== rootName) {
+        const existing = sharedDefinitions[result.title];
+        if (existing) {
+            if (stableStringify(existing) !== stableStringify(result)) {
+                throw new Error(`Conflicting titled schemas for "${result.title}" while preparing quicktype inputs.`);
+            }
+        } else {
+            sharedDefinitions[result.title] = result;
+        }
+        return { $ref: `#/definitions/${result.title}` };
+    }
+
+    return result;
+}
+
+function stableStringify(value: unknown): string {
+    return JSON.stringify(sortJsonValue(value));
+}
+
+function sortJsonValue(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(sortJsonValue);
+    }
+
+    if (value && typeof value === "object") {
+        return Object.fromEntries(
+            Object.entries(value as Record<string, unknown>)
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([key, child]) => [key, sortJsonValue(child)])
+        );
+    }
+
+    return value;
+}
+
 export interface ApiSchema {
     server?: Record<string, unknown>;
     session?: Record<string, unknown>;

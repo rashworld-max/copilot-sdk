@@ -478,7 +478,6 @@ export interface ModelCapabilitiesOverride {
  * The agent mode. Valid values: "interactive", "plan", "autopilot".
  */
 export type SessionMode = "interactive" | "plan" | "autopilot";
-
 export interface ModeGetResult {
   mode: SessionMode;
 }
@@ -490,19 +489,9 @@ export interface SessionModeGetRequest {
   sessionId: string;
 }
 
-/**
- * The agent mode. Valid values: "interactive", "plan", "autopilot".
- */
-export type SessionMode = "interactive" | "plan" | "autopilot";
-
 export interface ModeSetResult {
   mode: SessionMode;
 }
-
-/**
- * The agent mode. Valid values: "interactive", "plan", "autopilot".
- */
-export type SessionMode = "interactive" | "plan" | "autopilot";
 
 export interface ModeSetRequest {
   /**
@@ -1198,21 +1187,6 @@ export interface HandlePendingElicitationRequest {
   requestId: string;
   result: UiElicitationResponse;
 }
-/**
- * The elicitation response (accept with form values, decline, or cancel)
- */
-export interface UiElicitationResponse {
-  /**
-   * The user's response: accept (submitted), decline (rejected), or cancel (dismissed)
-   */
-  action: "accept" | "decline" | "cancel";
-  /**
-   * The form values submitted by the user (present when action is 'accept')
-   */
-  content?: {
-    [k: string]: string | number | boolean | string[];
-  };
-}
 
 export interface PermissionRequestResult {
   /**
@@ -1225,7 +1199,7 @@ export type PermissionDecision =
   | {
       kind: "approved";
     }
-  | {
+| {
       kind: "denied-by-rules";
       rules: unknown[];
     }

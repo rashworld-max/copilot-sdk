@@ -18,30 +18,24 @@ from typing import Any, TypeVar, Callable, cast
 from enum import Enum
 from uuid import UUID
 
-
 T = TypeVar("T")
 EnumT = TypeVar("EnumT", bound=Enum)
-
 
 def from_str(x: Any) -> str:
     assert isinstance(x, str)
     return x
 
-
 def from_float(x: Any) -> float:
     assert isinstance(x, (float, int)) and not isinstance(x, bool)
     return float(x)
-
 
 def to_float(x: Any) -> float:
     assert isinstance(x, (int, float))
     return x
 
-
 def from_none(x: Any) -> Any:
     assert x is None
     return x
-
 
 def from_union(fs, x):
     for f in fs:
@@ -51,36 +45,29 @@ def from_union(fs, x):
             pass
     assert False
 
-
 def from_list(f: Callable[[Any], T], x: Any) -> list[T]:
     assert isinstance(x, list)
     return [f(y) for y in x]
-
 
 def to_class(c: type[T], x: Any) -> dict:
     assert isinstance(x, c)
     return cast(Any, x).to_dict()
 
-
 def from_bool(x: Any) -> bool:
     assert isinstance(x, bool)
     return x
-
 
 def from_dict(f: Callable[[Any], T], x: Any) -> dict[str, T]:
     assert isinstance(x, dict)
     return { k: f(v) for (k, v) in x.items() }
 
-
 def to_enum(c: type[EnumT], x: Any) -> EnumT:
     assert isinstance(x, c)
     return x.value
 
-
 def from_int(x: Any) -> int:
     assert isinstance(x, int) and not isinstance(x, bool)
     return x
-
 
 @dataclass
 class PingResult:
@@ -108,7 +95,6 @@ class PingResult:
         result["timestamp"] = to_float(self.timestamp)
         return result
 
-
 @dataclass
 class PingRequest:
     message: str | None = None
@@ -125,7 +111,6 @@ class PingRequest:
         if self.message is not None:
             result["message"] = from_union([from_str, from_none], self.message)
         return result
-
 
 @dataclass
 class ModelBilling:
@@ -144,7 +129,6 @@ class ModelBilling:
         result: dict = {}
         result["multiplier"] = to_float(self.multiplier)
         return result
-
 
 @dataclass
 class ModelCapabilitiesLimitsVision:
@@ -174,7 +158,6 @@ class ModelCapabilitiesLimitsVision:
         result["supported_media_types"] = from_list(from_str, self.supported_media_types)
         return result
 
-
 @dataclass
 class ModelCapabilitiesLimits:
     """Token limits for prompts, outputs, and context window"""
@@ -189,7 +172,6 @@ class ModelCapabilitiesLimits:
     """Maximum number of prompt/input tokens"""
 
     vision: ModelCapabilitiesLimitsVision | None = None
-    """Vision-specific limits"""
 
     @staticmethod
     def from_dict(obj: Any) -> 'ModelCapabilitiesLimits':
@@ -210,7 +192,6 @@ class ModelCapabilitiesLimits:
         if self.vision is not None:
             result["vision"] = from_union([lambda x: to_class(ModelCapabilitiesLimitsVision, x), from_none], self.vision)
         return result
-
 
 @dataclass
 class ModelCapabilitiesSupports:
@@ -237,16 +218,12 @@ class ModelCapabilitiesSupports:
             result["vision"] = from_union([from_bool, from_none], self.vision)
         return result
 
-
 @dataclass
 class ModelCapabilities:
     """Model capabilities and limits"""
 
     limits: ModelCapabilitiesLimits
-    """Token limits for prompts, outputs, and context window"""
-
     supports: ModelCapabilitiesSupports
-    """Feature flags indicating what the model supports"""
 
     @staticmethod
     def from_dict(obj: Any) -> 'ModelCapabilities':
@@ -260,7 +237,6 @@ class ModelCapabilities:
         result["limits"] = to_class(ModelCapabilitiesLimits, self.limits)
         result["supports"] = to_class(ModelCapabilitiesSupports, self.supports)
         return result
-
 
 @dataclass
 class ModelPolicy:
@@ -285,12 +261,9 @@ class ModelPolicy:
         result["terms"] = from_str(self.terms)
         return result
 
-
 @dataclass
 class Model:
     capabilities: ModelCapabilities
-    """Model capabilities and limits"""
-
     id: str
     """Model identifier (e.g., "claude-sonnet-4.5")"""
 
@@ -298,14 +271,10 @@ class Model:
     """Display name"""
 
     billing: ModelBilling | None = None
-    """Billing information"""
-
     default_reasoning_effort: str | None = None
     """Default reasoning effort level (only present if model supports reasoning effort)"""
 
     policy: ModelPolicy | None = None
-    """Policy state (if applicable)"""
-
     supported_reasoning_efforts: list[str] | None = None
     """Supported reasoning effort levels (only present if model supports reasoning effort)"""
 
@@ -336,7 +305,6 @@ class Model:
             result["supportedReasoningEfforts"] = from_union([lambda x: from_list(from_str, x), from_none], self.supported_reasoning_efforts)
         return result
 
-
 @dataclass
 class ModelList:
     models: list[Model]
@@ -352,7 +320,6 @@ class ModelList:
         result: dict = {}
         result["models"] = from_list(lambda x: to_class(Model, x), self.models)
         return result
-
 
 @dataclass
 class Tool:
@@ -394,7 +361,6 @@ class Tool:
             result["parameters"] = from_union([lambda x: from_dict(lambda x: x, x), from_none], self.parameters)
         return result
 
-
 @dataclass
 class ToolList:
     tools: list[Tool]
@@ -410,7 +376,6 @@ class ToolList:
         result: dict = {}
         result["tools"] = from_list(lambda x: to_class(Tool, x), self.tools)
         return result
-
 
 @dataclass
 class ToolsListRequest:
@@ -430,7 +395,6 @@ class ToolsListRequest:
         if self.model is not None:
             result["model"] = from_union([from_str, from_none], self.model)
         return result
-
 
 @dataclass
 class AccountQuotaSnapshot:
@@ -474,7 +438,6 @@ class AccountQuotaSnapshot:
             result["resetDate"] = from_union([from_str, from_none], self.reset_date)
         return result
 
-
 @dataclass
 class AccountQuota:
     quota_snapshots: dict[str, AccountQuotaSnapshot]
@@ -491,19 +454,16 @@ class AccountQuota:
         result["quotaSnapshots"] = from_dict(lambda x: to_class(AccountQuotaSnapshot, x), self.quota_snapshots)
         return result
 
-
 class MCPConfigFilterMappingString(Enum):
     HIDDEN_CHARACTERS = "hidden_characters"
     MARKDOWN = "markdown"
     NONE = "none"
-
 
 class MCPConfigType(Enum):
     HTTP = "http"
     LOCAL = "local"
     SSE = "sse"
     STDIO = "stdio"
-
 
 @dataclass
 class MCPConfigServer:
@@ -573,7 +533,6 @@ class MCPConfigServer:
             result["url"] = from_union([from_str, from_none], self.url)
         return result
 
-
 @dataclass
 class MCPConfigList:
     servers: dict[str, MCPConfigServer]
@@ -589,7 +548,6 @@ class MCPConfigList:
         result: dict = {}
         result["servers"] = from_dict(lambda x: to_class(MCPConfigServer, x), self.servers)
         return result
-
 
 @dataclass
 class MCPConfigAddConfig:
@@ -659,12 +617,9 @@ class MCPConfigAddConfig:
             result["url"] = from_union([from_str, from_none], self.url)
         return result
 
-
 @dataclass
 class MCPConfigAddRequest:
     config: MCPConfigAddConfig
-    """MCP server configuration (local/stdio or remote/http)"""
-
     name: str
     """Unique name for the MCP server"""
 
@@ -680,7 +635,6 @@ class MCPConfigAddRequest:
         result["config"] = to_class(MCPConfigAddConfig, self.config)
         result["name"] = from_str(self.name)
         return result
-
 
 @dataclass
 class MCPConfigUpdateConfig:
@@ -750,12 +704,9 @@ class MCPConfigUpdateConfig:
             result["url"] = from_union([from_str, from_none], self.url)
         return result
 
-
 @dataclass
 class MCPConfigUpdateRequest:
     config: MCPConfigUpdateConfig
-    """MCP server configuration (local/stdio or remote/http)"""
-
     name: str
     """Name of the MCP server to update"""
 
@@ -771,7 +722,6 @@ class MCPConfigUpdateRequest:
         result["config"] = to_class(MCPConfigUpdateConfig, self.config)
         result["name"] = from_str(self.name)
         return result
-
 
 @dataclass
 class MCPConfigRemoveRequest:
@@ -789,7 +739,6 @@ class MCPConfigRemoveRequest:
         result["name"] = from_str(self.name)
         return result
 
-
 @dataclass
 class SessionFSSetProviderResult:
     success: bool
@@ -806,19 +755,15 @@ class SessionFSSetProviderResult:
         result["success"] = from_bool(self.success)
         return result
 
-
 class SessionFSSetProviderConventions(Enum):
     """Path conventions used by this filesystem"""
 
     POSIX = "posix"
     WINDOWS = "windows"
 
-
 @dataclass
 class SessionFSSetProviderRequest:
     conventions: SessionFSSetProviderConventions
-    """Path conventions used by this filesystem"""
-
     initial_cwd: str
     """Initial working directory for sessions"""
 
@@ -840,7 +785,6 @@ class SessionFSSetProviderRequest:
         result["sessionStatePath"] = from_str(self.session_state_path)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class SessionsForkResult:
@@ -857,7 +801,6 @@ class SessionsForkResult:
         result: dict = {}
         result["sessionId"] = from_str(self.session_id)
         return result
-
 
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
@@ -884,7 +827,6 @@ class SessionsForkRequest:
             result["toEventId"] = from_union([from_str, from_none], self.to_event_id)
         return result
 
-
 @dataclass
 class ModelCurrent:
     model_id: str | None = None
@@ -902,7 +844,6 @@ class ModelCurrent:
             result["modelId"] = from_union([from_str, from_none], self.model_id)
         return result
 
-
 @dataclass
 class ModelSwitchToResult:
     model_id: str | None = None
@@ -919,7 +860,6 @@ class ModelSwitchToResult:
         if self.model_id is not None:
             result["modelId"] = from_union([from_str, from_none], self.model_id)
         return result
-
 
 @dataclass
 class ModelCapabilitiesOverrideLimitsVision:
@@ -949,7 +889,6 @@ class ModelCapabilitiesOverrideLimitsVision:
         if self.supported_media_types is not None:
             result["supported_media_types"] = from_union([lambda x: from_list(from_str, x), from_none], self.supported_media_types)
         return result
-
 
 @dataclass
 class ModelCapabilitiesOverrideLimits:
@@ -983,7 +922,6 @@ class ModelCapabilitiesOverrideLimits:
             result["vision"] = from_union([lambda x: to_class(ModelCapabilitiesOverrideLimitsVision, x), from_none], self.vision)
         return result
 
-
 @dataclass
 class ModelCapabilitiesOverrideSupports:
     """Feature flags indicating what the model supports"""
@@ -1006,16 +944,12 @@ class ModelCapabilitiesOverrideSupports:
             result["vision"] = from_union([from_bool, from_none], self.vision)
         return result
 
-
 @dataclass
 class ModelCapabilitiesOverride:
     """Override individual model capabilities resolved by the runtime"""
 
     limits: ModelCapabilitiesOverrideLimits | None = None
-    """Token limits for prompts, outputs, and context window"""
-
     supports: ModelCapabilitiesOverrideSupports | None = None
-    """Feature flags indicating what the model supports"""
 
     @staticmethod
     def from_dict(obj: Any) -> 'ModelCapabilitiesOverride':
@@ -1032,15 +966,12 @@ class ModelCapabilitiesOverride:
             result["supports"] = from_union([lambda x: to_class(ModelCapabilitiesOverrideSupports, x), from_none], self.supports)
         return result
 
-
 @dataclass
 class ModelSwitchToRequest:
     model_id: str
     """Model identifier to switch to"""
 
     model_capabilities: ModelCapabilitiesOverride | None = None
-    """Override individual model capabilities resolved by the runtime"""
-
     reasoning_effort: str | None = None
     """Reasoning effort level to use for the model"""
 
@@ -1061,7 +992,6 @@ class ModelSwitchToRequest:
             result["reasoningEffort"] = from_union([from_str, from_none], self.reasoning_effort)
         return result
 
-
 class SessionMode(Enum):
     """The agent mode. Valid values: "interactive", "plan", "autopilot"."""
 
@@ -1069,11 +999,9 @@ class SessionMode(Enum):
     INTERACTIVE = "interactive"
     PLAN = "plan"
 
-
 @dataclass
 class ModeGetResult:
     mode: SessionMode
-    """The agent mode. Valid values: "interactive", "plan", "autopilot"."""
 
     @staticmethod
     def from_dict(obj: Any) -> 'ModeGetResult':
@@ -1086,11 +1014,9 @@ class ModeGetResult:
         result["mode"] = to_enum(SessionMode, self.mode)
         return result
 
-
 @dataclass
 class ModeSetResult:
     mode: SessionMode
-    """The agent mode. Valid values: "interactive", "plan", "autopilot"."""
 
     @staticmethod
     def from_dict(obj: Any) -> 'ModeSetResult':
@@ -1103,11 +1029,9 @@ class ModeSetResult:
         result["mode"] = to_enum(SessionMode, self.mode)
         return result
 
-
 @dataclass
 class ModeSetRequest:
     mode: SessionMode
-    """The agent mode. Valid values: "interactive", "plan", "autopilot"."""
 
     @staticmethod
     def from_dict(obj: Any) -> 'ModeSetRequest':
@@ -1119,7 +1043,6 @@ class ModeSetRequest:
         result: dict = {}
         result["mode"] = to_enum(SessionMode, self.mode)
         return result
-
 
 @dataclass
 class Plan:
@@ -1147,7 +1070,6 @@ class Plan:
         result["path"] = from_union([from_none, from_str], self.path)
         return result
 
-
 @dataclass
 class PlanUpdateResult:
     @staticmethod
@@ -1158,7 +1080,6 @@ class PlanUpdateResult:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 @dataclass
 class PlanUpdateRequest:
@@ -1176,7 +1097,6 @@ class PlanUpdateRequest:
         result["content"] = from_str(self.content)
         return result
 
-
 @dataclass
 class PlanDelete:
     @staticmethod
@@ -1187,7 +1107,6 @@ class PlanDelete:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 @dataclass
 class WorkspaceFiles:
@@ -1205,7 +1124,6 @@ class WorkspaceFiles:
         result["files"] = from_list(from_str, self.files)
         return result
 
-
 @dataclass
 class WorkspaceReadFileResult:
     content: str
@@ -1221,7 +1139,6 @@ class WorkspaceReadFileResult:
         result: dict = {}
         result["content"] = from_str(self.content)
         return result
-
 
 @dataclass
 class WorkspaceReadFileRequest:
@@ -1239,7 +1156,6 @@ class WorkspaceReadFileRequest:
         result["path"] = from_str(self.path)
         return result
 
-
 @dataclass
 class WorkspaceCreateFileResult:
     @staticmethod
@@ -1250,7 +1166,6 @@ class WorkspaceCreateFileResult:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 @dataclass
 class WorkspaceCreateFileRequest:
@@ -1273,7 +1188,6 @@ class WorkspaceCreateFileRequest:
         result["path"] = from_str(self.path)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class FleetStartResult:
@@ -1290,7 +1204,6 @@ class FleetStartResult:
         result: dict = {}
         result["started"] = from_bool(self.started)
         return result
-
 
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
@@ -1309,7 +1222,6 @@ class FleetStartRequest:
         if self.prompt is not None:
             result["prompt"] = from_union([from_str, from_none], self.prompt)
         return result
-
 
 @dataclass
 class Agent:
@@ -1337,7 +1249,6 @@ class Agent:
         result["name"] = from_str(self.name)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class AgentList:
@@ -1354,7 +1265,6 @@ class AgentList:
         result: dict = {}
         result["agents"] = from_list(lambda x: to_class(Agent, x), self.agents)
         return result
-
 
 @dataclass
 class AgentCurrentAgent:
@@ -1382,7 +1292,6 @@ class AgentCurrentAgent:
         result["name"] = from_str(self.name)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class AgentCurrent:
@@ -1399,7 +1308,6 @@ class AgentCurrent:
         result: dict = {}
         result["agent"] = from_union([lambda x: to_class(AgentCurrentAgent, x), from_none], self.agent)
         return result
-
 
 @dataclass
 class AgentSelectAgent:
@@ -1429,12 +1337,10 @@ class AgentSelectAgent:
         result["name"] = from_str(self.name)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class AgentSelectResult:
     agent: AgentSelectAgent
-    """The newly selected custom agent"""
 
     @staticmethod
     def from_dict(obj: Any) -> 'AgentSelectResult':
@@ -1446,7 +1352,6 @@ class AgentSelectResult:
         result: dict = {}
         result["agent"] = to_class(AgentSelectAgent, self.agent)
         return result
-
 
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
@@ -1465,7 +1370,6 @@ class AgentSelectRequest:
         result["name"] = from_str(self.name)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class AgentDeselect:
@@ -1477,7 +1381,6 @@ class AgentDeselect:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 @dataclass
 class AgentReloadAgent:
@@ -1505,7 +1408,6 @@ class AgentReloadAgent:
         result["name"] = from_str(self.name)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class AgentReload:
@@ -1522,7 +1424,6 @@ class AgentReload:
         result: dict = {}
         result["agents"] = from_list(lambda x: to_class(AgentReloadAgent, x), self.agents)
         return result
-
 
 @dataclass
 class Skill:
@@ -1566,7 +1467,6 @@ class Skill:
             result["path"] = from_union([from_str, from_none], self.path)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class SkillList:
@@ -1584,7 +1484,6 @@ class SkillList:
         result["skills"] = from_list(lambda x: to_class(Skill, x), self.skills)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class SkillsEnableResult:
@@ -1596,7 +1495,6 @@ class SkillsEnableResult:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
@@ -1615,7 +1513,6 @@ class SkillsEnableRequest:
         result["name"] = from_str(self.name)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class SkillsDisableResult:
@@ -1627,7 +1524,6 @@ class SkillsDisableResult:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
@@ -1646,7 +1542,6 @@ class SkillsDisableRequest:
         result["name"] = from_str(self.name)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class SkillsReload:
@@ -1659,7 +1554,6 @@ class SkillsReload:
         result: dict = {}
         return result
 
-
 class MCPServerStatus(Enum):
     """Connection status: connected, failed, needs-auth, pending, disabled, or not_configured"""
 
@@ -1670,15 +1564,12 @@ class MCPServerStatus(Enum):
     NOT_CONFIGURED = "not_configured"
     PENDING = "pending"
 
-
 @dataclass
 class MCPServer:
     name: str
     """Server name (config key)"""
 
     status: MCPServerStatus
-    """Connection status: connected, failed, needs-auth, pending, disabled, or not_configured"""
-
     error: str | None = None
     """Error message if the server failed to connect"""
 
@@ -1704,7 +1595,6 @@ class MCPServer:
             result["source"] = from_union([from_str, from_none], self.source)
         return result
 
-
 @dataclass
 class MCPList:
     servers: list[MCPServer]
@@ -1721,7 +1611,6 @@ class MCPList:
         result["servers"] = from_list(lambda x: to_class(MCPServer, x), self.servers)
         return result
 
-
 @dataclass
 class MCPEnableResult:
     @staticmethod
@@ -1732,7 +1621,6 @@ class MCPEnableResult:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 @dataclass
 class MCPEnableRequest:
@@ -1750,7 +1638,6 @@ class MCPEnableRequest:
         result["serverName"] = from_str(self.server_name)
         return result
 
-
 @dataclass
 class MCPDisableResult:
     @staticmethod
@@ -1761,7 +1648,6 @@ class MCPDisableResult:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 @dataclass
 class MCPDisableRequest:
@@ -1779,7 +1665,6 @@ class MCPDisableRequest:
         result["serverName"] = from_str(self.server_name)
         return result
 
-
 @dataclass
 class MCPReload:
     @staticmethod
@@ -1790,7 +1675,6 @@ class MCPReload:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 @dataclass
 class Plugin:
@@ -1824,7 +1708,6 @@ class Plugin:
             result["version"] = from_union([from_str, from_none], self.version)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class PluginList:
@@ -1842,13 +1725,11 @@ class PluginList:
         result["plugins"] = from_list(lambda x: to_class(Plugin, x), self.plugins)
         return result
 
-
 class ExtensionSource(Enum):
     """Discovery source: project (.github/extensions/) or user (~/.copilot/extensions/)"""
 
     PROJECT = "project"
     USER = "user"
-
 
 class ExtensionStatus(Enum):
     """Current status: running, disabled, failed, or starting"""
@@ -1857,7 +1738,6 @@ class ExtensionStatus(Enum):
     FAILED = "failed"
     RUNNING = "running"
     STARTING = "starting"
-
 
 @dataclass
 class Extension:
@@ -1868,11 +1748,7 @@ class Extension:
     """Extension name (directory name)"""
 
     source: ExtensionSource
-    """Discovery source: project (.github/extensions/) or user (~/.copilot/extensions/)"""
-
     status: ExtensionStatus
-    """Current status: running, disabled, failed, or starting"""
-
     pid: int | None = None
     """Process ID if the extension is running"""
 
@@ -1896,7 +1772,6 @@ class Extension:
             result["pid"] = from_union([from_int, from_none], self.pid)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class ExtensionList:
@@ -1914,7 +1789,6 @@ class ExtensionList:
         result["extensions"] = from_list(lambda x: to_class(Extension, x), self.extensions)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class ExtensionsEnableResult:
@@ -1926,7 +1800,6 @@ class ExtensionsEnableResult:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
@@ -1945,7 +1818,6 @@ class ExtensionsEnableRequest:
         result["id"] = from_str(self.id)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class ExtensionsDisableResult:
@@ -1957,7 +1829,6 @@ class ExtensionsDisableResult:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
@@ -1976,7 +1847,6 @@ class ExtensionsDisableRequest:
         result["id"] = from_str(self.id)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class ExtensionsReload:
@@ -1988,7 +1858,6 @@ class ExtensionsReload:
     def to_dict(self) -> dict:
         result: dict = {}
         return result
-
 
 @dataclass
 class HandleToolCallResult:
@@ -2005,7 +1874,6 @@ class HandleToolCallResult:
         result: dict = {}
         result["success"] = from_bool(self.success)
         return result
-
 
 @dataclass
 class ToolCallResult:
@@ -2034,7 +1902,6 @@ class ToolCallResult:
             result["toolTelemetry"] = from_union([lambda x: from_dict(lambda x: x, x), from_none], self.tool_telemetry)
         return result
 
-
 @dataclass
 class ToolsHandlePendingToolCallRequest:
     request_id: str
@@ -2058,7 +1925,6 @@ class ToolsHandlePendingToolCallRequest:
             result["result"] = from_union([lambda x: to_class(ToolCallResult, x), from_str, from_none], self.result)
         return result
 
-
 @dataclass
 class CommandsHandlePendingCommandResult:
     success: bool
@@ -2073,7 +1939,6 @@ class CommandsHandlePendingCommandResult:
         result: dict = {}
         result["success"] = from_bool(self.success)
         return result
-
 
 @dataclass
 class CommandsHandlePendingCommandRequest:
@@ -2097,7 +1962,6 @@ class CommandsHandlePendingCommandRequest:
             result["error"] = from_union([from_str, from_none], self.error)
         return result
 
-
 class UIElicitationAction(Enum):
     """The user's response: accept (submitted), decline (rejected), or cancel (dismissed)"""
 
@@ -2105,14 +1969,11 @@ class UIElicitationAction(Enum):
     CANCEL = "cancel"
     DECLINE = "decline"
 
-
 @dataclass
 class UIElicitationResponse:
     """The elicitation response (accept with form values, decline, or cancel)"""
 
     action: UIElicitationAction
-    """The user's response: accept (submitted), decline (rejected), or cancel (dismissed)"""
-
     content: dict[str, float | bool | list[str] | str] | None = None
     """The form values submitted by the user (present when action is 'accept')"""
 
@@ -2130,13 +1991,11 @@ class UIElicitationResponse:
             result["content"] = from_union([lambda x: from_dict(lambda x: from_union([to_float, from_bool, lambda x: from_list(from_str, x), from_str], x), x), from_none], self.content)
         return result
 
-
 class UIElicitationSchemaPropertyStringFormatDetails(Enum):
     DATE = "date"
     DATE_TIME = "date-time"
     EMAIL = "email"
     URI = "uri"
-
 
 @dataclass
 class UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf:
@@ -2156,10 +2015,8 @@ class UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf:
         result["title"] = from_str(self.title)
         return result
 
-
 class ItemsType(Enum):
     STRING = "string"
-
 
 @dataclass
 class UIElicitationSchemaPropertyArrayItems:
@@ -2185,7 +2042,6 @@ class UIElicitationSchemaPropertyArrayItems:
             result["anyOf"] = from_union([lambda x: from_list(lambda x: to_class(UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf, x), x), from_none], self.any_of)
         return result
 
-
 @dataclass
 class UIElicitationSchemaPropertyStringOneOfDetails:
     const: str
@@ -2204,14 +2060,12 @@ class UIElicitationSchemaPropertyStringOneOfDetails:
         result["title"] = from_str(self.title)
         return result
 
-
 class UIElicitationSchemaPropertyNumberType(Enum):
     ARRAY = "array"
     BOOLEAN = "boolean"
     INTEGER = "integer"
     NUMBER = "number"
     STRING = "string"
-
 
 @dataclass
 class UIElicitationSchemaProperty:
@@ -2284,10 +2138,8 @@ class UIElicitationSchemaProperty:
             result["minimum"] = from_union([to_float, from_none], self.minimum)
         return result
 
-
 class RequestedSchemaType(Enum):
     OBJECT = "object"
-
 
 @dataclass
 class UIElicitationSchema:
@@ -2318,14 +2170,12 @@ class UIElicitationSchema:
             result["required"] = from_union([lambda x: from_list(from_str, x), from_none], self.required)
         return result
 
-
 @dataclass
 class UIElicitationRequest:
     message: str
     """Message describing what information is needed from the user"""
 
     requested_schema: UIElicitationSchema
-    """JSON Schema describing the form fields to present to the user"""
 
     @staticmethod
     def from_dict(obj: Any) -> 'UIElicitationRequest':
@@ -2339,7 +2189,6 @@ class UIElicitationRequest:
         result["message"] = from_str(self.message)
         result["requestedSchema"] = to_class(UIElicitationSchema, self.requested_schema)
         return result
-
 
 @dataclass
 class UIElicitationResult:
@@ -2359,53 +2208,25 @@ class UIElicitationResult:
         result["success"] = from_bool(self.success)
         return result
 
-
-@dataclass
-class ResultClass:
-    """The elicitation response (accept with form values, decline, or cancel)"""
-
-    action: UIElicitationAction
-    """The user's response: accept (submitted), decline (rejected), or cancel (dismissed)"""
-
-    content: dict[str, float | bool | list[str] | str] | None = None
-    """The form values submitted by the user (present when action is 'accept')"""
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'ResultClass':
-        assert isinstance(obj, dict)
-        action = UIElicitationAction(obj.get("action"))
-        content = from_union([lambda x: from_dict(lambda x: from_union([from_float, from_bool, lambda x: from_list(from_str, x), from_str], x), x), from_none], obj.get("content"))
-        return ResultClass(action, content)
-
-    def to_dict(self) -> dict:
-        result: dict = {}
-        result["action"] = to_enum(UIElicitationAction, self.action)
-        if self.content is not None:
-            result["content"] = from_union([lambda x: from_dict(lambda x: from_union([to_float, from_bool, lambda x: from_list(from_str, x), from_str], x), x), from_none], self.content)
-        return result
-
-
 @dataclass
 class HandlePendingElicitationRequest:
     request_id: str
     """The unique request ID from the elicitation.requested event"""
 
-    result: ResultClass
-    """The elicitation response (accept with form values, decline, or cancel)"""
+    result: UIElicitationResponse
 
     @staticmethod
     def from_dict(obj: Any) -> 'HandlePendingElicitationRequest':
         assert isinstance(obj, dict)
         request_id = from_str(obj.get("requestId"))
-        result = ResultClass.from_dict(obj.get("result"))
+        result = UIElicitationResponse.from_dict(obj.get("result"))
         return HandlePendingElicitationRequest(request_id, result)
 
     def to_dict(self) -> dict:
         result: dict = {}
         result["requestId"] = from_str(self.request_id)
-        result["result"] = to_class(ResultClass, self.result)
+        result["result"] = to_class(UIElicitationResponse, self.result)
         return result
-
 
 @dataclass
 class PermissionRequestResult:
@@ -2423,7 +2244,6 @@ class PermissionRequestResult:
         result["success"] = from_bool(self.success)
         return result
 
-
 class Kind(Enum):
     APPROVED = "approved"
     DENIED_BY_CONTENT_EXCLUSION_POLICY = "denied-by-content-exclusion-policy"
@@ -2431,7 +2251,6 @@ class Kind(Enum):
     DENIED_BY_RULES = "denied-by-rules"
     DENIED_INTERACTIVELY_BY_USER = "denied-interactively-by-user"
     DENIED_NO_APPROVAL_RULE_AND_COULD_NOT_REQUEST_FROM_USER = "denied-no-approval-rule-and-could-not-request-from-user"
-
 
 @dataclass
 class PermissionDecision:
@@ -2468,7 +2287,6 @@ class PermissionDecision:
             result["interrupt"] = from_union([from_bool, from_none], self.interrupt)
         return result
 
-
 @dataclass
 class PermissionDecisionRequest:
     request_id: str
@@ -2487,7 +2305,6 @@ class PermissionDecisionRequest:
         result["result"] = to_class(PermissionDecision, self.result)
         return result
 
-
 @dataclass
 class LogResult:
     event_id: UUID
@@ -2504,7 +2321,6 @@ class LogResult:
         result["eventId"] = str(self.event_id)
         return result
 
-
 class LogLevel(Enum):
     """Log severity level. Determines how the message is displayed in the timeline. Defaults to
     "info".
@@ -2512,7 +2328,6 @@ class LogLevel(Enum):
     ERROR = "error"
     INFO = "info"
     WARNING = "warning"
-
 
 @dataclass
 class LogRequest:
@@ -2523,9 +2338,6 @@ class LogRequest:
     """When true, the message is transient and not persisted to the session event log on disk"""
 
     level: LogLevel | None = None
-    """Log severity level. Determines how the message is displayed in the timeline. Defaults to
-    "info".
-    """
     url: str | None = None
     """Optional URL the user can open in their browser for more details"""
 
@@ -2549,7 +2361,6 @@ class LogRequest:
             result["url"] = from_union([from_str, from_none], self.url)
         return result
 
-
 @dataclass
 class ShellExecResult:
     process_id: str
@@ -2565,7 +2376,6 @@ class ShellExecResult:
         result: dict = {}
         result["processId"] = from_str(self.process_id)
         return result
-
 
 @dataclass
 class ShellExecRequest:
@@ -2595,7 +2405,6 @@ class ShellExecRequest:
             result["timeout"] = from_union([to_float, from_none], self.timeout)
         return result
 
-
 @dataclass
 class ShellKillResult:
     killed: bool
@@ -2612,7 +2421,6 @@ class ShellKillResult:
         result["killed"] = from_bool(self.killed)
         return result
 
-
 class ShellKillSignal(Enum):
     """Signal to send (default: SIGTERM)"""
 
@@ -2620,14 +2428,12 @@ class ShellKillSignal(Enum):
     SIGKILL = "SIGKILL"
     SIGTERM = "SIGTERM"
 
-
 @dataclass
 class ShellKillRequest:
     process_id: str
     """Process identifier returned by shell.exec"""
 
     signal: ShellKillSignal | None = None
-    """Signal to send (default: SIGTERM)"""
 
     @staticmethod
     def from_dict(obj: Any) -> 'ShellKillRequest':
@@ -2642,7 +2448,6 @@ class ShellKillRequest:
         if self.signal is not None:
             result["signal"] = from_union([lambda x: to_enum(ShellKillSignal, x), from_none], self.signal)
         return result
-
 
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
@@ -2671,7 +2476,6 @@ class HistoryCompact:
         result["tokensRemoved"] = to_float(self.tokens_removed)
         return result
 
-
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
 class HistoryTruncateResult:
@@ -2688,7 +2492,6 @@ class HistoryTruncateResult:
         result: dict = {}
         result["eventsRemoved"] = to_float(self.events_removed)
         return result
-
 
 # Experimental: this type is part of an experimental API and may change or be removed.
 @dataclass
@@ -2707,7 +2510,6 @@ class HistoryTruncateRequest:
         result["eventId"] = from_str(self.event_id)
         return result
 
-
 @dataclass
 class SessionFSReadFileResult:
     content: str
@@ -2723,7 +2525,6 @@ class SessionFSReadFileResult:
         result: dict = {}
         result["content"] = from_str(self.content)
         return result
-
 
 @dataclass
 class SessionFSReadFileRequest:
@@ -2745,7 +2546,6 @@ class SessionFSReadFileRequest:
         result["path"] = from_str(self.path)
         result["sessionId"] = from_str(self.session_id)
         return result
-
 
 @dataclass
 class SessionFSWriteFileRequest:
@@ -2779,7 +2579,6 @@ class SessionFSWriteFileRequest:
             result["mode"] = from_union([to_float, from_none], self.mode)
         return result
 
-
 @dataclass
 class SessionFSAppendFileRequest:
     content: str
@@ -2812,7 +2611,6 @@ class SessionFSAppendFileRequest:
             result["mode"] = from_union([to_float, from_none], self.mode)
         return result
 
-
 @dataclass
 class SessionFSExistsResult:
     exists: bool
@@ -2828,7 +2626,6 @@ class SessionFSExistsResult:
         result: dict = {}
         result["exists"] = from_bool(self.exists)
         return result
-
 
 @dataclass
 class SessionFSExistsRequest:
@@ -2850,7 +2647,6 @@ class SessionFSExistsRequest:
         result["path"] = from_str(self.path)
         result["sessionId"] = from_str(self.session_id)
         return result
-
 
 @dataclass
 class SessionFSStatResult:
@@ -2888,7 +2684,6 @@ class SessionFSStatResult:
         result["size"] = to_float(self.size)
         return result
 
-
 @dataclass
 class SessionFSStatRequest:
     path: str
@@ -2909,7 +2704,6 @@ class SessionFSStatRequest:
         result["path"] = from_str(self.path)
         result["sessionId"] = from_str(self.session_id)
         return result
-
 
 @dataclass
 class SessionFSMkdirRequest:
@@ -2944,7 +2738,6 @@ class SessionFSMkdirRequest:
             result["recursive"] = from_union([from_bool, from_none], self.recursive)
         return result
 
-
 @dataclass
 class SessionFSReaddirResult:
     entries: list[str]
@@ -2960,7 +2753,6 @@ class SessionFSReaddirResult:
         result: dict = {}
         result["entries"] = from_list(from_str, self.entries)
         return result
-
 
 @dataclass
 class SessionFSReaddirRequest:
@@ -2983,13 +2775,11 @@ class SessionFSReaddirRequest:
         result["sessionId"] = from_str(self.session_id)
         return result
 
-
 class SessionFSReaddirWithTypesEntryType(Enum):
     """Entry type"""
 
     DIRECTORY = "directory"
     FILE = "file"
-
 
 @dataclass
 class SessionFSReaddirWithTypesEntry:
@@ -2997,7 +2787,6 @@ class SessionFSReaddirWithTypesEntry:
     """Entry name"""
 
     type: SessionFSReaddirWithTypesEntryType
-    """Entry type"""
 
     @staticmethod
     def from_dict(obj: Any) -> 'SessionFSReaddirWithTypesEntry':
@@ -3011,7 +2800,6 @@ class SessionFSReaddirWithTypesEntry:
         result["name"] = from_str(self.name)
         result["type"] = to_enum(SessionFSReaddirWithTypesEntryType, self.type)
         return result
-
 
 @dataclass
 class SessionFSReaddirWithTypesResult:
@@ -3028,7 +2816,6 @@ class SessionFSReaddirWithTypesResult:
         result: dict = {}
         result["entries"] = from_list(lambda x: to_class(SessionFSReaddirWithTypesEntry, x), self.entries)
         return result
-
 
 @dataclass
 class SessionFSReaddirWithTypesRequest:
@@ -3050,7 +2837,6 @@ class SessionFSReaddirWithTypesRequest:
         result["path"] = from_str(self.path)
         result["sessionId"] = from_str(self.session_id)
         return result
-
 
 @dataclass
 class SessionFSRmRequest:
@@ -3085,7 +2871,6 @@ class SessionFSRmRequest:
             result["recursive"] = from_union([from_bool, from_none], self.recursive)
         return result
 
-
 @dataclass
 class SessionFSRenameRequest:
     dest: str
@@ -3112,722 +2897,542 @@ class SessionFSRenameRequest:
         result["src"] = from_str(self.src)
         return result
 
-
 def ping_result_from_dict(s: Any) -> PingResult:
     return PingResult.from_dict(s)
-
 
 def ping_result_to_dict(x: PingResult) -> Any:
     return to_class(PingResult, x)
 
-
 def ping_request_from_dict(s: Any) -> PingRequest:
     return PingRequest.from_dict(s)
-
 
 def ping_request_to_dict(x: PingRequest) -> Any:
     return to_class(PingRequest, x)
 
-
 def model_list_from_dict(s: Any) -> ModelList:
     return ModelList.from_dict(s)
-
 
 def model_list_to_dict(x: ModelList) -> Any:
     return to_class(ModelList, x)
 
-
 def tool_list_from_dict(s: Any) -> ToolList:
     return ToolList.from_dict(s)
-
 
 def tool_list_to_dict(x: ToolList) -> Any:
     return to_class(ToolList, x)
 
-
 def tools_list_request_from_dict(s: Any) -> ToolsListRequest:
     return ToolsListRequest.from_dict(s)
-
 
 def tools_list_request_to_dict(x: ToolsListRequest) -> Any:
     return to_class(ToolsListRequest, x)
 
-
 def account_quota_from_dict(s: Any) -> AccountQuota:
     return AccountQuota.from_dict(s)
-
 
 def account_quota_to_dict(x: AccountQuota) -> Any:
     return to_class(AccountQuota, x)
 
-
 def mcp_config_list_from_dict(s: Any) -> MCPConfigList:
     return MCPConfigList.from_dict(s)
-
 
 def mcp_config_list_to_dict(x: MCPConfigList) -> Any:
     return to_class(MCPConfigList, x)
 
-
 def mcp_config_add_request_from_dict(s: Any) -> MCPConfigAddRequest:
     return MCPConfigAddRequest.from_dict(s)
-
 
 def mcp_config_add_request_to_dict(x: MCPConfigAddRequest) -> Any:
     return to_class(MCPConfigAddRequest, x)
 
-
 def mcp_config_update_request_from_dict(s: Any) -> MCPConfigUpdateRequest:
     return MCPConfigUpdateRequest.from_dict(s)
-
 
 def mcp_config_update_request_to_dict(x: MCPConfigUpdateRequest) -> Any:
     return to_class(MCPConfigUpdateRequest, x)
 
-
 def mcp_config_remove_request_from_dict(s: Any) -> MCPConfigRemoveRequest:
     return MCPConfigRemoveRequest.from_dict(s)
-
 
 def mcp_config_remove_request_to_dict(x: MCPConfigRemoveRequest) -> Any:
     return to_class(MCPConfigRemoveRequest, x)
 
-
 def session_fs_set_provider_result_from_dict(s: Any) -> SessionFSSetProviderResult:
     return SessionFSSetProviderResult.from_dict(s)
-
 
 def session_fs_set_provider_result_to_dict(x: SessionFSSetProviderResult) -> Any:
     return to_class(SessionFSSetProviderResult, x)
 
-
 def session_fs_set_provider_request_from_dict(s: Any) -> SessionFSSetProviderRequest:
     return SessionFSSetProviderRequest.from_dict(s)
-
 
 def session_fs_set_provider_request_to_dict(x: SessionFSSetProviderRequest) -> Any:
     return to_class(SessionFSSetProviderRequest, x)
 
-
 def sessions_fork_result_from_dict(s: Any) -> SessionsForkResult:
     return SessionsForkResult.from_dict(s)
-
 
 def sessions_fork_result_to_dict(x: SessionsForkResult) -> Any:
     return to_class(SessionsForkResult, x)
 
-
 def sessions_fork_request_from_dict(s: Any) -> SessionsForkRequest:
     return SessionsForkRequest.from_dict(s)
-
 
 def sessions_fork_request_to_dict(x: SessionsForkRequest) -> Any:
     return to_class(SessionsForkRequest, x)
 
-
 def model_current_from_dict(s: Any) -> ModelCurrent:
     return ModelCurrent.from_dict(s)
-
 
 def model_current_to_dict(x: ModelCurrent) -> Any:
     return to_class(ModelCurrent, x)
 
-
 def model_switch_to_result_from_dict(s: Any) -> ModelSwitchToResult:
     return ModelSwitchToResult.from_dict(s)
-
 
 def model_switch_to_result_to_dict(x: ModelSwitchToResult) -> Any:
     return to_class(ModelSwitchToResult, x)
 
-
 def model_switch_to_request_from_dict(s: Any) -> ModelSwitchToRequest:
     return ModelSwitchToRequest.from_dict(s)
-
 
 def model_switch_to_request_to_dict(x: ModelSwitchToRequest) -> Any:
     return to_class(ModelSwitchToRequest, x)
 
-
 def mode_get_result_from_dict(s: Any) -> ModeGetResult:
     return ModeGetResult.from_dict(s)
-
 
 def mode_get_result_to_dict(x: ModeGetResult) -> Any:
     return to_class(ModeGetResult, x)
 
-
 def mode_set_result_from_dict(s: Any) -> ModeSetResult:
     return ModeSetResult.from_dict(s)
-
 
 def mode_set_result_to_dict(x: ModeSetResult) -> Any:
     return to_class(ModeSetResult, x)
 
-
 def mode_set_request_from_dict(s: Any) -> ModeSetRequest:
     return ModeSetRequest.from_dict(s)
-
 
 def mode_set_request_to_dict(x: ModeSetRequest) -> Any:
     return to_class(ModeSetRequest, x)
 
-
 def plan_from_dict(s: Any) -> Plan:
     return Plan.from_dict(s)
-
 
 def plan_to_dict(x: Plan) -> Any:
     return to_class(Plan, x)
 
-
 def plan_update_result_from_dict(s: Any) -> PlanUpdateResult:
     return PlanUpdateResult.from_dict(s)
-
 
 def plan_update_result_to_dict(x: PlanUpdateResult) -> Any:
     return to_class(PlanUpdateResult, x)
 
-
 def plan_update_request_from_dict(s: Any) -> PlanUpdateRequest:
     return PlanUpdateRequest.from_dict(s)
-
 
 def plan_update_request_to_dict(x: PlanUpdateRequest) -> Any:
     return to_class(PlanUpdateRequest, x)
 
-
 def plan_delete_from_dict(s: Any) -> PlanDelete:
     return PlanDelete.from_dict(s)
-
 
 def plan_delete_to_dict(x: PlanDelete) -> Any:
     return to_class(PlanDelete, x)
 
-
 def workspace_files_from_dict(s: Any) -> WorkspaceFiles:
     return WorkspaceFiles.from_dict(s)
-
 
 def workspace_files_to_dict(x: WorkspaceFiles) -> Any:
     return to_class(WorkspaceFiles, x)
 
-
 def workspace_read_file_result_from_dict(s: Any) -> WorkspaceReadFileResult:
     return WorkspaceReadFileResult.from_dict(s)
-
 
 def workspace_read_file_result_to_dict(x: WorkspaceReadFileResult) -> Any:
     return to_class(WorkspaceReadFileResult, x)
 
-
 def workspace_read_file_request_from_dict(s: Any) -> WorkspaceReadFileRequest:
     return WorkspaceReadFileRequest.from_dict(s)
-
 
 def workspace_read_file_request_to_dict(x: WorkspaceReadFileRequest) -> Any:
     return to_class(WorkspaceReadFileRequest, x)
 
-
 def workspace_create_file_result_from_dict(s: Any) -> WorkspaceCreateFileResult:
     return WorkspaceCreateFileResult.from_dict(s)
-
 
 def workspace_create_file_result_to_dict(x: WorkspaceCreateFileResult) -> Any:
     return to_class(WorkspaceCreateFileResult, x)
 
-
 def workspace_create_file_request_from_dict(s: Any) -> WorkspaceCreateFileRequest:
     return WorkspaceCreateFileRequest.from_dict(s)
-
 
 def workspace_create_file_request_to_dict(x: WorkspaceCreateFileRequest) -> Any:
     return to_class(WorkspaceCreateFileRequest, x)
 
-
 def fleet_start_result_from_dict(s: Any) -> FleetStartResult:
     return FleetStartResult.from_dict(s)
-
 
 def fleet_start_result_to_dict(x: FleetStartResult) -> Any:
     return to_class(FleetStartResult, x)
 
-
 def fleet_start_request_from_dict(s: Any) -> FleetStartRequest:
     return FleetStartRequest.from_dict(s)
-
 
 def fleet_start_request_to_dict(x: FleetStartRequest) -> Any:
     return to_class(FleetStartRequest, x)
 
-
 def agent_list_from_dict(s: Any) -> AgentList:
     return AgentList.from_dict(s)
-
 
 def agent_list_to_dict(x: AgentList) -> Any:
     return to_class(AgentList, x)
 
-
 def agent_current_from_dict(s: Any) -> AgentCurrent:
     return AgentCurrent.from_dict(s)
-
 
 def agent_current_to_dict(x: AgentCurrent) -> Any:
     return to_class(AgentCurrent, x)
 
-
 def agent_select_result_from_dict(s: Any) -> AgentSelectResult:
     return AgentSelectResult.from_dict(s)
-
 
 def agent_select_result_to_dict(x: AgentSelectResult) -> Any:
     return to_class(AgentSelectResult, x)
 
-
 def agent_select_request_from_dict(s: Any) -> AgentSelectRequest:
     return AgentSelectRequest.from_dict(s)
-
 
 def agent_select_request_to_dict(x: AgentSelectRequest) -> Any:
     return to_class(AgentSelectRequest, x)
 
-
 def agent_deselect_from_dict(s: Any) -> AgentDeselect:
     return AgentDeselect.from_dict(s)
-
 
 def agent_deselect_to_dict(x: AgentDeselect) -> Any:
     return to_class(AgentDeselect, x)
 
-
 def agent_reload_from_dict(s: Any) -> AgentReload:
     return AgentReload.from_dict(s)
-
 
 def agent_reload_to_dict(x: AgentReload) -> Any:
     return to_class(AgentReload, x)
 
-
 def skill_list_from_dict(s: Any) -> SkillList:
     return SkillList.from_dict(s)
-
 
 def skill_list_to_dict(x: SkillList) -> Any:
     return to_class(SkillList, x)
 
-
 def skills_enable_result_from_dict(s: Any) -> SkillsEnableResult:
     return SkillsEnableResult.from_dict(s)
-
 
 def skills_enable_result_to_dict(x: SkillsEnableResult) -> Any:
     return to_class(SkillsEnableResult, x)
 
-
 def skills_enable_request_from_dict(s: Any) -> SkillsEnableRequest:
     return SkillsEnableRequest.from_dict(s)
-
 
 def skills_enable_request_to_dict(x: SkillsEnableRequest) -> Any:
     return to_class(SkillsEnableRequest, x)
 
-
 def skills_disable_result_from_dict(s: Any) -> SkillsDisableResult:
     return SkillsDisableResult.from_dict(s)
-
 
 def skills_disable_result_to_dict(x: SkillsDisableResult) -> Any:
     return to_class(SkillsDisableResult, x)
 
-
 def skills_disable_request_from_dict(s: Any) -> SkillsDisableRequest:
     return SkillsDisableRequest.from_dict(s)
-
 
 def skills_disable_request_to_dict(x: SkillsDisableRequest) -> Any:
     return to_class(SkillsDisableRequest, x)
 
-
 def skills_reload_from_dict(s: Any) -> SkillsReload:
     return SkillsReload.from_dict(s)
-
 
 def skills_reload_to_dict(x: SkillsReload) -> Any:
     return to_class(SkillsReload, x)
 
-
 def mcp_list_from_dict(s: Any) -> MCPList:
     return MCPList.from_dict(s)
-
 
 def mcp_list_to_dict(x: MCPList) -> Any:
     return to_class(MCPList, x)
 
-
 def mcp_enable_result_from_dict(s: Any) -> MCPEnableResult:
     return MCPEnableResult.from_dict(s)
-
 
 def mcp_enable_result_to_dict(x: MCPEnableResult) -> Any:
     return to_class(MCPEnableResult, x)
 
-
 def mcp_enable_request_from_dict(s: Any) -> MCPEnableRequest:
     return MCPEnableRequest.from_dict(s)
-
 
 def mcp_enable_request_to_dict(x: MCPEnableRequest) -> Any:
     return to_class(MCPEnableRequest, x)
 
-
 def mcp_disable_result_from_dict(s: Any) -> MCPDisableResult:
     return MCPDisableResult.from_dict(s)
-
 
 def mcp_disable_result_to_dict(x: MCPDisableResult) -> Any:
     return to_class(MCPDisableResult, x)
 
-
 def mcp_disable_request_from_dict(s: Any) -> MCPDisableRequest:
     return MCPDisableRequest.from_dict(s)
-
 
 def mcp_disable_request_to_dict(x: MCPDisableRequest) -> Any:
     return to_class(MCPDisableRequest, x)
 
-
 def mcp_reload_from_dict(s: Any) -> MCPReload:
     return MCPReload.from_dict(s)
-
 
 def mcp_reload_to_dict(x: MCPReload) -> Any:
     return to_class(MCPReload, x)
 
-
 def plugin_list_from_dict(s: Any) -> PluginList:
     return PluginList.from_dict(s)
-
 
 def plugin_list_to_dict(x: PluginList) -> Any:
     return to_class(PluginList, x)
 
-
 def extension_list_from_dict(s: Any) -> ExtensionList:
     return ExtensionList.from_dict(s)
-
 
 def extension_list_to_dict(x: ExtensionList) -> Any:
     return to_class(ExtensionList, x)
 
-
 def extensions_enable_result_from_dict(s: Any) -> ExtensionsEnableResult:
     return ExtensionsEnableResult.from_dict(s)
-
 
 def extensions_enable_result_to_dict(x: ExtensionsEnableResult) -> Any:
     return to_class(ExtensionsEnableResult, x)
 
-
 def extensions_enable_request_from_dict(s: Any) -> ExtensionsEnableRequest:
     return ExtensionsEnableRequest.from_dict(s)
-
 
 def extensions_enable_request_to_dict(x: ExtensionsEnableRequest) -> Any:
     return to_class(ExtensionsEnableRequest, x)
 
-
 def extensions_disable_result_from_dict(s: Any) -> ExtensionsDisableResult:
     return ExtensionsDisableResult.from_dict(s)
-
 
 def extensions_disable_result_to_dict(x: ExtensionsDisableResult) -> Any:
     return to_class(ExtensionsDisableResult, x)
 
-
 def extensions_disable_request_from_dict(s: Any) -> ExtensionsDisableRequest:
     return ExtensionsDisableRequest.from_dict(s)
-
 
 def extensions_disable_request_to_dict(x: ExtensionsDisableRequest) -> Any:
     return to_class(ExtensionsDisableRequest, x)
 
-
 def extensions_reload_from_dict(s: Any) -> ExtensionsReload:
     return ExtensionsReload.from_dict(s)
-
 
 def extensions_reload_to_dict(x: ExtensionsReload) -> Any:
     return to_class(ExtensionsReload, x)
 
-
 def handle_tool_call_result_from_dict(s: Any) -> HandleToolCallResult:
     return HandleToolCallResult.from_dict(s)
-
 
 def handle_tool_call_result_to_dict(x: HandleToolCallResult) -> Any:
     return to_class(HandleToolCallResult, x)
 
-
 def tools_handle_pending_tool_call_request_from_dict(s: Any) -> ToolsHandlePendingToolCallRequest:
     return ToolsHandlePendingToolCallRequest.from_dict(s)
-
 
 def tools_handle_pending_tool_call_request_to_dict(x: ToolsHandlePendingToolCallRequest) -> Any:
     return to_class(ToolsHandlePendingToolCallRequest, x)
 
-
 def commands_handle_pending_command_result_from_dict(s: Any) -> CommandsHandlePendingCommandResult:
     return CommandsHandlePendingCommandResult.from_dict(s)
-
 
 def commands_handle_pending_command_result_to_dict(x: CommandsHandlePendingCommandResult) -> Any:
     return to_class(CommandsHandlePendingCommandResult, x)
 
-
 def commands_handle_pending_command_request_from_dict(s: Any) -> CommandsHandlePendingCommandRequest:
     return CommandsHandlePendingCommandRequest.from_dict(s)
-
 
 def commands_handle_pending_command_request_to_dict(x: CommandsHandlePendingCommandRequest) -> Any:
     return to_class(CommandsHandlePendingCommandRequest, x)
 
-
 def ui_elicitation_response_from_dict(s: Any) -> UIElicitationResponse:
     return UIElicitationResponse.from_dict(s)
-
 
 def ui_elicitation_response_to_dict(x: UIElicitationResponse) -> Any:
     return to_class(UIElicitationResponse, x)
 
-
 def ui_elicitation_request_from_dict(s: Any) -> UIElicitationRequest:
     return UIElicitationRequest.from_dict(s)
-
 
 def ui_elicitation_request_to_dict(x: UIElicitationRequest) -> Any:
     return to_class(UIElicitationRequest, x)
 
-
 def ui_elicitation_result_from_dict(s: Any) -> UIElicitationResult:
     return UIElicitationResult.from_dict(s)
-
 
 def ui_elicitation_result_to_dict(x: UIElicitationResult) -> Any:
     return to_class(UIElicitationResult, x)
 
-
 def handle_pending_elicitation_request_from_dict(s: Any) -> HandlePendingElicitationRequest:
     return HandlePendingElicitationRequest.from_dict(s)
-
 
 def handle_pending_elicitation_request_to_dict(x: HandlePendingElicitationRequest) -> Any:
     return to_class(HandlePendingElicitationRequest, x)
 
-
 def permission_request_result_from_dict(s: Any) -> PermissionRequestResult:
     return PermissionRequestResult.from_dict(s)
-
 
 def permission_request_result_to_dict(x: PermissionRequestResult) -> Any:
     return to_class(PermissionRequestResult, x)
 
-
 def permission_decision_request_from_dict(s: Any) -> PermissionDecisionRequest:
     return PermissionDecisionRequest.from_dict(s)
-
 
 def permission_decision_request_to_dict(x: PermissionDecisionRequest) -> Any:
     return to_class(PermissionDecisionRequest, x)
 
-
 def log_result_from_dict(s: Any) -> LogResult:
     return LogResult.from_dict(s)
-
 
 def log_result_to_dict(x: LogResult) -> Any:
     return to_class(LogResult, x)
 
-
 def log_request_from_dict(s: Any) -> LogRequest:
     return LogRequest.from_dict(s)
-
 
 def log_request_to_dict(x: LogRequest) -> Any:
     return to_class(LogRequest, x)
 
-
 def shell_exec_result_from_dict(s: Any) -> ShellExecResult:
     return ShellExecResult.from_dict(s)
-
 
 def shell_exec_result_to_dict(x: ShellExecResult) -> Any:
     return to_class(ShellExecResult, x)
 
-
 def shell_exec_request_from_dict(s: Any) -> ShellExecRequest:
     return ShellExecRequest.from_dict(s)
-
 
 def shell_exec_request_to_dict(x: ShellExecRequest) -> Any:
     return to_class(ShellExecRequest, x)
 
-
 def shell_kill_result_from_dict(s: Any) -> ShellKillResult:
     return ShellKillResult.from_dict(s)
-
 
 def shell_kill_result_to_dict(x: ShellKillResult) -> Any:
     return to_class(ShellKillResult, x)
 
-
 def shell_kill_request_from_dict(s: Any) -> ShellKillRequest:
     return ShellKillRequest.from_dict(s)
-
 
 def shell_kill_request_to_dict(x: ShellKillRequest) -> Any:
     return to_class(ShellKillRequest, x)
 
-
 def history_compact_from_dict(s: Any) -> HistoryCompact:
     return HistoryCompact.from_dict(s)
-
 
 def history_compact_to_dict(x: HistoryCompact) -> Any:
     return to_class(HistoryCompact, x)
 
-
 def history_truncate_result_from_dict(s: Any) -> HistoryTruncateResult:
     return HistoryTruncateResult.from_dict(s)
-
 
 def history_truncate_result_to_dict(x: HistoryTruncateResult) -> Any:
     return to_class(HistoryTruncateResult, x)
 
-
 def history_truncate_request_from_dict(s: Any) -> HistoryTruncateRequest:
     return HistoryTruncateRequest.from_dict(s)
-
 
 def history_truncate_request_to_dict(x: HistoryTruncateRequest) -> Any:
     return to_class(HistoryTruncateRequest, x)
 
-
 def session_fs_read_file_result_from_dict(s: Any) -> SessionFSReadFileResult:
     return SessionFSReadFileResult.from_dict(s)
-
 
 def session_fs_read_file_result_to_dict(x: SessionFSReadFileResult) -> Any:
     return to_class(SessionFSReadFileResult, x)
 
-
 def session_fs_read_file_request_from_dict(s: Any) -> SessionFSReadFileRequest:
     return SessionFSReadFileRequest.from_dict(s)
-
 
 def session_fs_read_file_request_to_dict(x: SessionFSReadFileRequest) -> Any:
     return to_class(SessionFSReadFileRequest, x)
 
-
 def session_fs_write_file_request_from_dict(s: Any) -> SessionFSWriteFileRequest:
     return SessionFSWriteFileRequest.from_dict(s)
-
 
 def session_fs_write_file_request_to_dict(x: SessionFSWriteFileRequest) -> Any:
     return to_class(SessionFSWriteFileRequest, x)
 
-
 def session_fs_append_file_request_from_dict(s: Any) -> SessionFSAppendFileRequest:
     return SessionFSAppendFileRequest.from_dict(s)
-
 
 def session_fs_append_file_request_to_dict(x: SessionFSAppendFileRequest) -> Any:
     return to_class(SessionFSAppendFileRequest, x)
 
-
 def session_fs_exists_result_from_dict(s: Any) -> SessionFSExistsResult:
     return SessionFSExistsResult.from_dict(s)
-
 
 def session_fs_exists_result_to_dict(x: SessionFSExistsResult) -> Any:
     return to_class(SessionFSExistsResult, x)
 
-
 def session_fs_exists_request_from_dict(s: Any) -> SessionFSExistsRequest:
     return SessionFSExistsRequest.from_dict(s)
-
 
 def session_fs_exists_request_to_dict(x: SessionFSExistsRequest) -> Any:
     return to_class(SessionFSExistsRequest, x)
 
-
 def session_fs_stat_result_from_dict(s: Any) -> SessionFSStatResult:
     return SessionFSStatResult.from_dict(s)
-
 
 def session_fs_stat_result_to_dict(x: SessionFSStatResult) -> Any:
     return to_class(SessionFSStatResult, x)
 
-
 def session_fs_stat_request_from_dict(s: Any) -> SessionFSStatRequest:
     return SessionFSStatRequest.from_dict(s)
-
 
 def session_fs_stat_request_to_dict(x: SessionFSStatRequest) -> Any:
     return to_class(SessionFSStatRequest, x)
 
-
 def session_fs_mkdir_request_from_dict(s: Any) -> SessionFSMkdirRequest:
     return SessionFSMkdirRequest.from_dict(s)
-
 
 def session_fs_mkdir_request_to_dict(x: SessionFSMkdirRequest) -> Any:
     return to_class(SessionFSMkdirRequest, x)
 
-
 def session_fs_readdir_result_from_dict(s: Any) -> SessionFSReaddirResult:
     return SessionFSReaddirResult.from_dict(s)
-
 
 def session_fs_readdir_result_to_dict(x: SessionFSReaddirResult) -> Any:
     return to_class(SessionFSReaddirResult, x)
 
-
 def session_fs_readdir_request_from_dict(s: Any) -> SessionFSReaddirRequest:
     return SessionFSReaddirRequest.from_dict(s)
-
 
 def session_fs_readdir_request_to_dict(x: SessionFSReaddirRequest) -> Any:
     return to_class(SessionFSReaddirRequest, x)
 
-
 def session_fs_readdir_with_types_result_from_dict(s: Any) -> SessionFSReaddirWithTypesResult:
     return SessionFSReaddirWithTypesResult.from_dict(s)
-
 
 def session_fs_readdir_with_types_result_to_dict(x: SessionFSReaddirWithTypesResult) -> Any:
     return to_class(SessionFSReaddirWithTypesResult, x)
 
-
 def session_fs_readdir_with_types_request_from_dict(s: Any) -> SessionFSReaddirWithTypesRequest:
     return SessionFSReaddirWithTypesRequest.from_dict(s)
-
 
 def session_fs_readdir_with_types_request_to_dict(x: SessionFSReaddirWithTypesRequest) -> Any:
     return to_class(SessionFSReaddirWithTypesRequest, x)
 
-
 def session_fs_rm_request_from_dict(s: Any) -> SessionFSRmRequest:
     return SessionFSRmRequest.from_dict(s)
-
 
 def session_fs_rm_request_to_dict(x: SessionFSRmRequest) -> Any:
     return to_class(SessionFSRmRequest, x)
 
-
 def session_fs_rename_request_from_dict(s: Any) -> SessionFSRenameRequest:
     return SessionFSRenameRequest.from_dict(s)
-
 
 def session_fs_rename_request_to_dict(x: SessionFSRenameRequest) -> Any:
     return to_class(SessionFSRenameRequest, x)

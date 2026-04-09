@@ -31,17 +31,14 @@ type ModelList struct {
 }
 
 type Model struct {
-	// Billing information
-	Billing *ModelBilling `json:"billing,omitempty"`
-	// Model capabilities and limits
+	Billing      *ModelBilling     `json:"billing,omitempty"`
 	Capabilities ModelCapabilities `json:"capabilities"`
 	// Default reasoning effort level (only present if model supports reasoning effort)
 	DefaultReasoningEffort *string `json:"defaultReasoningEffort,omitempty"`
 	// Model identifier (e.g., "claude-sonnet-4.5")
 	ID string `json:"id"`
 	// Display name
-	Name string `json:"name"`
-	// Policy state (if applicable)
+	Name   string       `json:"name"`
 	Policy *ModelPolicy `json:"policy,omitempty"`
 	// Supported reasoning effort levels (only present if model supports reasoning effort)
 	SupportedReasoningEfforts []string `json:"supportedReasoningEfforts,omitempty"`
@@ -55,9 +52,7 @@ type ModelBilling struct {
 
 // Model capabilities and limits
 type ModelCapabilities struct {
-	// Token limits for prompts, outputs, and context window
-	Limits ModelCapabilitiesLimits `json:"limits"`
-	// Feature flags indicating what the model supports
+	Limits   ModelCapabilitiesLimits   `json:"limits"`
 	Supports ModelCapabilitiesSupports `json:"supports"`
 }
 
@@ -68,9 +63,8 @@ type ModelCapabilitiesLimits struct {
 	// Maximum number of output/completion tokens
 	MaxOutputTokens *float64 `json:"max_output_tokens,omitempty"`
 	// Maximum number of prompt/input tokens
-	MaxPromptTokens *float64 `json:"max_prompt_tokens,omitempty"`
-	// Vision-specific limits
-	Vision *ModelCapabilitiesLimitsVision `json:"vision,omitempty"`
+	MaxPromptTokens *float64                       `json:"max_prompt_tokens,omitempty"`
+	Vision          *ModelCapabilitiesLimitsVision `json:"vision,omitempty"`
 }
 
 // Vision-specific limits
@@ -168,7 +162,6 @@ type MCPConfigServer struct {
 }
 
 type MCPConfigAddRequest struct {
-	// MCP server configuration (local/stdio or remote/http)
 	Config MCPConfigAddConfig `json:"config"`
 	// Unique name for the MCP server
 	Name string `json:"name"`
@@ -193,7 +186,6 @@ type MCPConfigAddConfig struct {
 }
 
 type MCPConfigUpdateRequest struct {
-	// MCP server configuration (local/stdio or remote/http)
 	Config MCPConfigUpdateConfig `json:"config"`
 	// Name of the MCP server to update
 	Name string `json:"name"`
@@ -228,7 +220,6 @@ type SessionFSSetProviderResult struct {
 }
 
 type SessionFSSetProviderRequest struct {
-	// Path conventions used by this filesystem
 	Conventions SessionFSSetProviderConventions `json:"conventions"`
 	// Initial working directory for sessions
 	InitialCwd string `json:"initialCwd"`
@@ -262,7 +253,6 @@ type ModelSwitchToResult struct {
 }
 
 type ModelSwitchToRequest struct {
-	// Override individual model capabilities resolved by the runtime
 	ModelCapabilities *ModelCapabilitiesOverride `json:"modelCapabilities,omitempty"`
 	// Model identifier to switch to
 	ModelID string `json:"modelId"`
@@ -272,9 +262,7 @@ type ModelSwitchToRequest struct {
 
 // Override individual model capabilities resolved by the runtime
 type ModelCapabilitiesOverride struct {
-	// Token limits for prompts, outputs, and context window
-	Limits *ModelCapabilitiesOverrideLimits `json:"limits,omitempty"`
-	// Feature flags indicating what the model supports
+	Limits   *ModelCapabilitiesOverrideLimits   `json:"limits,omitempty"`
 	Supports *ModelCapabilitiesOverrideSupports `json:"supports,omitempty"`
 }
 
@@ -303,17 +291,14 @@ type ModelCapabilitiesOverrideSupports struct {
 }
 
 type ModeGetResult struct {
-	// The agent mode. Valid values: "interactive", "plan", "autopilot".
 	Mode SessionMode `json:"mode"`
 }
 
 type ModeSetResult struct {
-	// The agent mode. Valid values: "interactive", "plan", "autopilot".
 	Mode SessionMode `json:"mode"`
 }
 
 type ModeSetRequest struct {
-	// The agent mode. Valid values: "interactive", "plan", "autopilot".
 	Mode SessionMode `json:"mode"`
 }
 
@@ -406,7 +391,6 @@ type AgentCurrentAgent struct {
 
 // Experimental: AgentSelectResult is part of an experimental API and may change or be removed.
 type AgentSelectResult struct {
-	// The newly selected custom agent
 	Agent AgentSelectAgent `json:"agent"`
 }
 
@@ -501,8 +485,7 @@ type MCPServer struct {
 	// Server name (config key)
 	Name string `json:"name"`
 	// Configuration source: user, workspace, plugin, or builtin
-	Source *string `json:"source,omitempty"`
-	// Connection status: connected, failed, needs-auth, pending, disabled, or not_configured
+	Source *string         `json:"source,omitempty"`
 	Status MCPServerStatus `json:"status"`
 }
 
@@ -554,10 +537,8 @@ type Extension struct {
 	// Extension name (directory name)
 	Name string `json:"name"`
 	// Process ID if the extension is running
-	PID *int64 `json:"pid,omitempty"`
-	// Discovery source: project (.github/extensions/) or user (~/.copilot/extensions/)
+	PID    *int64          `json:"pid,omitempty"`
 	Source ExtensionSource `json:"source"`
-	// Current status: running, disabled, failed, or starting
 	Status ExtensionStatus `json:"status"`
 }
 
@@ -616,7 +597,6 @@ type CommandsHandlePendingCommandRequest struct {
 
 // The elicitation response (accept with form values, decline, or cancel)
 type UIElicitationResponse struct {
-	// The user's response: accept (submitted), decline (rejected), or cancel (dismissed)
 	Action UIElicitationAction `json:"action"`
 	// The form values submitted by the user (present when action is 'accept')
 	Content map[string]*UIElicitationContent `json:"content,omitempty"`
@@ -624,8 +604,7 @@ type UIElicitationResponse struct {
 
 type UIElicitationRequest struct {
 	// Message describing what information is needed from the user
-	Message string `json:"message"`
-	// JSON Schema describing the form fields to present to the user
+	Message         string              `json:"message"`
 	RequestedSchema UIElicitationSchema `json:"requestedSchema"`
 }
 
@@ -681,17 +660,8 @@ type UIElicitationResult struct {
 
 type HandlePendingElicitationRequest struct {
 	// The unique request ID from the elicitation.requested event
-	RequestID string `json:"requestId"`
-	// The elicitation response (accept with form values, decline, or cancel)
-	Result ResultClass `json:"result"`
-}
-
-// The elicitation response (accept with form values, decline, or cancel)
-type ResultClass struct {
-	// The user's response: accept (submitted), decline (rejected), or cancel (dismissed)
-	Action UIElicitationAction `json:"action"`
-	// The form values submitted by the user (present when action is 'accept')
-	Content map[string]*UIElicitationContent `json:"content,omitempty"`
+	RequestID string                `json:"requestId"`
+	Result    UIElicitationResponse `json:"result"`
 }
 
 type PermissionRequestResult struct {
@@ -720,10 +690,8 @@ type LogResult struct {
 
 type LogRequest struct {
 	// When true, the message is transient and not persisted to the session event log on disk
-	Ephemeral *bool `json:"ephemeral,omitempty"`
-	// Log severity level. Determines how the message is displayed in the timeline. Defaults to
-	// "info".
-	Level *LogLevel `json:"level,omitempty"`
+	Ephemeral *bool     `json:"ephemeral,omitempty"`
+	Level     *LogLevel `json:"level,omitempty"`
 	// Human-readable message
 	Message string `json:"message"`
 	// Optional URL the user can open in their browser for more details
@@ -751,9 +719,8 @@ type ShellKillResult struct {
 
 type ShellKillRequest struct {
 	// Process identifier returned by shell.exec
-	ProcessID string `json:"processId"`
-	// Signal to send (default: SIGTERM)
-	Signal *ShellKillSignal `json:"signal,omitempty"`
+	ProcessID string           `json:"processId"`
+	Signal    *ShellKillSignal `json:"signal,omitempty"`
 }
 
 // Experimental: HistoryCompact is part of an experimental API and may change or be removed.
@@ -874,8 +841,7 @@ type SessionFSReaddirWithTypesResult struct {
 
 type SessionFSReaddirWithTypesEntry struct {
 	// Entry name
-	Name string `json:"name"`
-	// Entry type
+	Name string                             `json:"name"`
 	Type SessionFSReaddirWithTypesEntryType `json:"type"`
 }
 
