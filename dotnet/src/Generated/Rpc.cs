@@ -2587,7 +2587,14 @@ public class HistoryApi
     public async Task<HistoryCompact> CompactAsync(CancellationToken cancellationToken = default)
     {
         var request = new SessionHistoryCompactRequest { SessionId = _sessionId };
-        return await CopilotClient.InvokeRpcAsync<HistoryCompact>(_rpc, "session.history.compact", [request], cancellationToken);
+        try
+        {
+            return await CopilotClient.InvokeRpcAsync<HistoryCompact>(_rpc, "session.history.compact", [request], cancellationToken);
+        }
+        catch (IOException ex) when (ex.InnerException is RemoteMethodNotFoundException)
+        {
+            return await CopilotClient.InvokeRpcAsync<HistoryCompact>(_rpc, "session.compaction.compact", [request], cancellationToken);
+        }
     }
 
     /// <summary>Calls "session.history.truncate".</summary>

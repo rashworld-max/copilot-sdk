@@ -1893,7 +1893,13 @@ func (a *HistoryApi) Compact(ctx context.Context) (*HistoryCompact, error) {
 	req := map[string]any{"sessionId": a.sessionID}
 	raw, err := a.client.Request("session.history.compact", req)
 	if err != nil {
-		return nil, err
+		var rpcErr *jsonrpc2.Error
+		if errors.As(err, &rpcErr) && rpcErr.Code == jsonrpc2.ErrMethodNotFound.Code {
+			raw, err = a.client.Request("session.compaction.compact", req)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 	var result HistoryCompact
 	if err := json.Unmarshal(raw, &result); err != nil {

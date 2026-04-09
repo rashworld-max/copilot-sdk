@@ -6,14 +6,14 @@ import pytest
 
 from copilot.generated.rpc import (
     FleetApi,
+    FleetStartRequest,
     ModeApi,
     ModeSetRequest,
     PlanApi,
     ServerModelsApi,
     ServerToolsApi,
-    SessionFleetStartParams,
     SessionMode,
-    ToolsListParams,
+    ToolsListRequest,
 )
 
 
@@ -33,7 +33,7 @@ class TestRpcTimeout:
         client.request = AsyncMock(return_value={"started": True})
         api = FleetApi(client, "sess-1")
 
-        await api.start(SessionFleetStartParams(prompt="go"))
+        await api.start(FleetStartRequest(prompt="go"))
 
         client.request.assert_called_once()
         _, kwargs = client.request.call_args
@@ -45,7 +45,7 @@ class TestRpcTimeout:
         client.request = AsyncMock(return_value={"started": True})
         api = FleetApi(client, "sess-1")
 
-        await api.start(SessionFleetStartParams(prompt="go"), timeout=600.0)
+        await api.start(FleetStartRequest(prompt="go"), timeout=600.0)
 
         _, kwargs = client.request.call_args
         assert kwargs["timeout"] == 600.0
@@ -93,7 +93,7 @@ class TestRpcTimeout:
         client.request = AsyncMock(return_value={"tools": []})
         api = ServerToolsApi(client)
 
-        await api.list(ToolsListParams(), timeout=60.0)
+        await api.list(ToolsListRequest(), timeout=60.0)
 
         _, kwargs = client.request.call_args
         assert kwargs["timeout"] == 60.0
@@ -104,7 +104,7 @@ class TestRpcTimeout:
         client.request = AsyncMock(return_value={"tools": []})
         api = ServerToolsApi(client)
 
-        await api.list(ToolsListParams())
+        await api.list(ToolsListRequest())
 
         _, kwargs = client.request.call_args
         assert "timeout" not in kwargs

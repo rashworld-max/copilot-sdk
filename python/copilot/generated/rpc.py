@@ -5,6 +5,8 @@ Generated from: api.schema.json
 
 from typing import TYPE_CHECKING
 
+from .._jsonrpc import JsonRpcError
+
 if TYPE_CHECKING:
     from .._jsonrpc import JsonRpcClient
 
@@ -4101,7 +4103,18 @@ class HistoryApi:
         self._session_id = session_id
 
     async def compact(self, *, timeout: float | None = None) -> HistoryCompact:
-        return HistoryCompact.from_dict(await self._client.request("session.history.compact", {"sessionId": self._session_id}, **_timeout_kwargs(timeout)))
+        params = {"sessionId": self._session_id}
+        try:
+            response = await self._client.request(
+                "session.history.compact", params, **_timeout_kwargs(timeout)
+            )
+        except JsonRpcError as exc:
+            if exc.code != -32601:
+                raise
+            response = await self._client.request(
+                "session.compaction.compact", params, **_timeout_kwargs(timeout)
+            )
+        return HistoryCompact.from_dict(response)
 
     async def truncate(self, params: HistoryTruncateRequest, *, timeout: float | None = None) -> HistoryTruncateResult:
         params_dict = {k: v for k, v in params.to_dict().items() if v is not None}
