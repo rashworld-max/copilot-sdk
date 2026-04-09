@@ -297,12 +297,7 @@ export type SessionEvent =
       /**
        * Session title change payload containing the new display title
        */
-      data: {
-        /**
-         * The new display title for the session
-         */
-        title: string;
-      };
+      data: {};
     }
   | {
       /**
@@ -1177,10 +1172,6 @@ export type SessionEvent =
                */
               number: number;
               /**
-               * Title of the referenced item
-               */
-              title: string;
-              /**
                * Type of GitHub reference
                */
               referenceType: "issue" | "pr" | "discussion";
@@ -2009,10 +2000,6 @@ export type SessionEvent =
                  * Resource name identifier
                  */
                 name: string;
-                /**
-                 * Human-readable display title for the resource
-                 */
-                title?: string;
                 /**
                  * URI identifying the resource
                  */

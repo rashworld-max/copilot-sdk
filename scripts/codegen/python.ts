@@ -10,7 +10,7 @@ import fs from "fs/promises";
 import type { JSONSchema7 } from "json-schema";
 import { FetchingJSONSchemaStore, InputData, JSONSchemaInput, quicktype } from "quicktype-core";
 import {
-    applyTitleSuggestions,
+    cloneSchemaForCodegen,
     getApiSchemaPath,
     getRpcSchemaTypeName,
     getSessionEventsSchemaPath,
@@ -213,7 +213,7 @@ async function generateSessionEvents(schemaPath?: string): Promise<void> {
     console.log("Python: generating session-events...");
 
     const resolvedPath = schemaPath ?? (await getSessionEventsSchemaPath());
-    const schema = applyTitleSuggestions(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as JSONSchema7);
+    const schema = cloneSchemaForCodegen(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as JSONSchema7);
     const resolvedSchema = (schema.definitions?.SessionEvent as JSONSchema7) || schema;
     const processed = postProcessSchema(resolvedSchema);
 
@@ -269,7 +269,7 @@ async function generateRpc(schemaPath?: string): Promise<void> {
     console.log("Python: generating RPC types...");
 
     const resolvedPath = schemaPath ?? (await getApiSchemaPath());
-    const schema = applyTitleSuggestions(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as ApiSchema);
+    const schema = cloneSchemaForCodegen(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as ApiSchema);
 
     const allMethods = [
         ...collectRpcMethods(schema.server || {}),

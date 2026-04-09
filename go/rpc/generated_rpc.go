@@ -897,7 +897,7 @@ const (
 	SessionFSSetProviderConventionsWindows SessionFSSetProviderConventions = "windows"
 )
 
-// The agent mode. Valid values: "interactive", "plan", "autopilot".
+// The current agent mode. Valid values: "interactive", "plan", "autopilot".
 type SessionMode string
 
 const (

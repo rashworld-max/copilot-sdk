@@ -12,7 +12,7 @@ import path from "path";
 import { promisify } from "util";
 import type { JSONSchema7 } from "json-schema";
 import {
-    applyTitleSuggestions,
+    cloneSchemaForCodegen,
     getApiSchemaPath,
     getRpcSchemaTypeName,
     getSessionEventsSchemaPath,
@@ -584,7 +584,7 @@ namespace GitHub.Copilot.SDK;
 export async function generateSessionEvents(schemaPath?: string): Promise<void> {
     console.log("C#: generating session-events...");
     const resolvedPath = schemaPath ?? (await getSessionEventsSchemaPath());
-    const schema = applyTitleSuggestions(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as JSONSchema7);
+    const schema = cloneSchemaForCodegen(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as JSONSchema7);
     const code = generateSessionEventsCode(schema);
     const outPath = await writeGeneratedFile("dotnet/src/Generated/SessionEvents.cs", code);
     console.log(`  ✓ ${outPath}`);
@@ -1138,7 +1138,7 @@ internal static class Diagnostics
 export async function generateRpc(schemaPath?: string): Promise<void> {
     console.log("C#: generating RPC types...");
     const resolvedPath = schemaPath ?? (await getApiSchemaPath());
-    const schema = applyTitleSuggestions(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as ApiSchema);
+    const schema = cloneSchemaForCodegen(JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as ApiSchema);
     const code = generateRpcCode(schema);
     const outPath = await writeGeneratedFile("dotnet/src/Generated/Rpc.cs", code);
     console.log(`  ✓ ${outPath}`);

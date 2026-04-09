@@ -424,7 +424,7 @@ internal class ModelSwitchToRequest
 /// <summary>RPC data type for ModeGet operations.</summary>
 public class ModeGetResult
 {
-    /// <summary>The agent mode. Valid values: "interactive", "plan", "autopilot".</summary>
+    /// <summary>The current agent mode. Valid values: "interactive", "plan", "autopilot".</summary>
     [JsonPropertyName("mode")]
     public SessionMode Mode { get; set; }
 }
@@ -440,7 +440,7 @@ internal class SessionModeGetRequest
 /// <summary>RPC data type for ModeSet operations.</summary>
 public class ModeSetResult
 {
-    /// <summary>The agent mode. Valid values: "interactive", "plan", "autopilot".</summary>
+    /// <summary>The agent mode after switching. Valid values: "interactive", "plan", "autopilot".</summary>
     [JsonPropertyName("mode")]
     public SessionMode Mode { get; set; }
 }
@@ -452,7 +452,7 @@ internal class ModeSetRequest
     [JsonPropertyName("sessionId")]
     public string SessionId { get; set; } = string.Empty;
 
-    /// <summary>The agent mode. Valid values: "interactive", "plan", "autopilot".</summary>
+    /// <summary>The agent mode to switch to. Valid values: "interactive", "plan", "autopilot".</summary>
     [JsonPropertyName("mode")]
     public SessionMode Mode { get; set; }
 }
@@ -1565,7 +1565,7 @@ public enum LogLevel
 }
 
 
-/// <summary>The agent mode. Valid values: "interactive", "plan", "autopilot".</summary>
+/// <summary>The current agent mode. Valid values: "interactive", "plan", "autopilot".</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<SessionMode>))]
 public enum SessionMode
 {

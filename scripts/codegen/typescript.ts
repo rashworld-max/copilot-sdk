@@ -16,6 +16,7 @@ import {
     isNodeFullyExperimental,
     isRpcMethod,
     postProcessSchema,
+    stripNonAnnotationTitles,
     writeGeneratedFile,
     type ApiSchema,
     type RpcMethod,
@@ -130,7 +131,7 @@ async function generateSessionEvents(schemaPath?: string): Promise<void> {
 
     const resolvedPath = schemaPath ?? (await getSessionEventsSchemaPath());
     const schema = JSON.parse(await fs.readFile(resolvedPath, "utf-8")) as JSONSchema7;
-    const processed = postProcessSchema(schema);
+    const processed = postProcessSchema(stripNonAnnotationTitles(schema));
 
     const ts = await compile(processed, "SessionEvent", {
         bannerComment: `/**
@@ -176,7 +177,7 @@ import type { MessageConnection } from "vscode-jsonrpc/node.js";
 
     for (const method of [...allMethods, ...clientSessionMethods]) {
         if (method.result) {
-            const compiled = await compile(method.result, resultTypeName(method), {
+            const compiled = await compile(stripNonAnnotationTitles(method.result), resultTypeName(method), {
                 bannerComment: "",
                 additionalProperties: false,
             });
@@ -188,7 +189,7 @@ import type { MessageConnection } from "vscode-jsonrpc/node.js";
         }
 
         if (method.params?.properties && Object.keys(method.params.properties).length > 0) {
-            const paramsCompiled = await compile(method.params, paramsTypeName(method), {
+            const paramsCompiled = await compile(stripNonAnnotationTitles(method.params), paramsTypeName(method), {
                 bannerComment: "",
                 additionalProperties: false,
             });

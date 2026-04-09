@@ -475,7 +475,7 @@ export interface ModelCapabilitiesOverride {
 }
 
 /**
- * The agent mode. Valid values: "interactive", "plan", "autopilot".
+ * The current agent mode. Valid values: "interactive", "plan", "autopilot".
  */
 export type SessionMode = "interactive" | "plan" | "autopilot";
 export interface ModeGetResult {
@@ -1096,7 +1096,6 @@ export interface UiElicitationRequest {
       [k: string]:
         | {
             type: "string";
-            title?: string;
             description?: string;
             enum: string[];
             enumNames?: string[];
@@ -1104,17 +1103,14 @@ export interface UiElicitationRequest {
           }
         | {
             type: "string";
-            title?: string;
             description?: string;
             oneOf: {
               const: string;
-              title: string;
             }[];
             default?: string;
           }
         | {
             type: "array";
-            title?: string;
             description?: string;
             minItems?: number;
             maxItems?: number;
@@ -1126,27 +1122,23 @@ export interface UiElicitationRequest {
           }
         | {
             type: "array";
-            title?: string;
             description?: string;
             minItems?: number;
             maxItems?: number;
             items: {
               anyOf: {
                 const: string;
-                title: string;
               }[];
             };
             default?: string[];
           }
         | {
             type: "boolean";
-            title?: string;
             description?: string;
             default?: boolean;
           }
         | {
             type: "string";
-            title?: string;
             description?: string;
             minLength?: number;
             maxLength?: number;
@@ -1155,7 +1147,6 @@ export interface UiElicitationRequest {
           }
         | {
             type: "number" | "integer";
-            title?: string;
             description?: string;
             minimum?: number;
             maximum?: number;

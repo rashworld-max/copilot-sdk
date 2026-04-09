@@ -993,7 +993,7 @@ class ModelSwitchToRequest:
         return result
 
 class SessionMode(Enum):
-    """The agent mode. Valid values: "interactive", "plan", "autopilot"."""
+    """The current agent mode. Valid values: "interactive", "plan", "autopilot"."""
 
     AUTOPILOT = "autopilot"
     INTERACTIVE = "interactive"
