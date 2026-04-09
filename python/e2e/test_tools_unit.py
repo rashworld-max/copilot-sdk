@@ -11,7 +11,6 @@ from copilot.tools import (
     ToolResult,
     _normalize_result,
     _is_call_tool_result,
-    _convert_call_tool_result,
 )
 
 
