@@ -21,9 +21,6 @@ const __dirname = path.dirname(__filename);
 /** Root of the copilot-sdk repo */
 export const REPO_ROOT = path.resolve(__dirname, "../..");
 
-/** Event types to exclude from generation (internal/legacy types) */
-export const EXCLUDED_EVENT_TYPES = new Set(["session.import_legacy"]);
-
 // ── Schema paths ────────────────────────────────────────────────────────────
 
 export async function getSessionEventsSchemaPath(): Promise<string> {
@@ -49,7 +46,7 @@ export async function getApiSchemaPath(cliArg?: string): Promise<string> {
 
 /**
  * Post-process JSON Schema for quicktype compatibility.
- * Converts boolean const values to enum, filters excluded event types.
+ * Converts boolean const values to enum.
  */
 export function postProcessSchema(schema: JSONSchema7): JSONSchema7 {
     if (typeof schema !== "object" || schema === null) return schema;
@@ -81,18 +78,9 @@ export function postProcessSchema(schema: JSONSchema7): JSONSchema7 {
 
     for (const combiner of ["anyOf", "allOf", "oneOf"] as const) {
         if (processed[combiner]) {
-            processed[combiner] = processed[combiner]!
-                .filter((item) => {
-                    if (typeof item !== "object") return true;
-                    const typeConst = (item as JSONSchema7).properties?.type;
-                    if (typeof typeConst === "object" && "const" in typeConst) {
-                        return !EXCLUDED_EVENT_TYPES.has(typeConst.const as string);
-                    }
-                    return true;
-                })
-                .map((item) =>
-                    typeof item === "object" ? postProcessSchema(item as JSONSchema7) : item
-                ) as JSONSchema7Definition[];
+            processed[combiner] = processed[combiner]!.map((item) =>
+                typeof item === "object" ? postProcessSchema(item as JSONSchema7) : item
+            ) as JSONSchema7Definition[];
         }
     }
 

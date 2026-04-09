@@ -13,7 +13,6 @@ import { FetchingJSONSchemaStore, InputData, JSONSchemaInput, quicktype } from "
 import { promisify } from "util";
 import {
     applyTitleSuggestions,
-    EXCLUDED_EVENT_TYPES,
     getApiSchemaPath,
     getRpcSchemaTypeName,
     getSessionEventsSchemaPath,
@@ -181,8 +180,7 @@ function extractGoEventVariants(schema: JSONSchema7): GoEventVariant[] {
                 dataSchema,
                 dataDescription: dataSchema.description,
             };
-        })
-        .filter((v) => !EXCLUDED_EVENT_TYPES.has(v.typeName));
+        });
 }
 
 /**

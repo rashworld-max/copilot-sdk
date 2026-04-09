@@ -18,7 +18,6 @@ import {
     getSessionEventsSchemaPath,
     isNodeFullyExperimental,
     isRpcMethod,
-    EXCLUDED_EVENT_TYPES,
     REPO_ROOT,
     writeGeneratedFile,
     type ApiSchema,
@@ -240,8 +239,7 @@ function extractEventVariants(schema: JSONSchema7): EventVariant[] {
                 dataSchema,
                 dataDescription: dataSchema?.description,
             };
-        })
-        .filter((v) => !EXCLUDED_EVENT_TYPES.has(v.typeName));
+        });
 }
 
 /**
