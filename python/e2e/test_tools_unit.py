@@ -9,8 +9,8 @@ from copilot import define_tool
 from copilot.tools import (
     ToolInvocation,
     ToolResult,
-    _normalize_result,
     _is_call_tool_result,
+    _normalize_result,
 )
 
 
