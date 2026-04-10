@@ -807,6 +807,9 @@ class ShutdownModelMetricUsage:
     output_tokens: float
     """Total output tokens produced across all requests to this model"""
 
+    reasoning_tokens: float | None = None
+    """Total reasoning tokens produced across all requests to this model"""
+
     @staticmethod
     def from_dict(obj: Any) -> 'ShutdownModelMetricUsage':
         assert isinstance(obj, dict)
@@ -814,7 +817,8 @@ class ShutdownModelMetricUsage:
         cache_write_tokens = from_float(obj.get("cacheWriteTokens"))
         input_tokens = from_float(obj.get("inputTokens"))
         output_tokens = from_float(obj.get("outputTokens"))
-        return ShutdownModelMetricUsage(cache_read_tokens, cache_write_tokens, input_tokens, output_tokens)
+        reasoning_tokens = from_union([from_float, from_none], obj.get("reasoningTokens"))
+        return ShutdownModelMetricUsage(cache_read_tokens, cache_write_tokens, input_tokens, output_tokens, reasoning_tokens)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -822,6 +826,8 @@ class ShutdownModelMetricUsage:
         result["cacheWriteTokens"] = to_float(self.cache_write_tokens)
         result["inputTokens"] = to_float(self.input_tokens)
         result["outputTokens"] = to_float(self.output_tokens)
+        if self.reasoning_tokens is not None:
+            result["reasoningTokens"] = from_union([to_float, from_none], self.reasoning_tokens)
         return result
 
 
@@ -857,6 +863,13 @@ class ChangedOperation(Enum):
     UPDATE = "update"
 
 
+class PermissionRequestMemoryAction(Enum):
+    """Whether this is a store or vote memory operation"""
+
+    STORE = "store"
+    VOTE = "vote"
+
+
 @dataclass
 class PermissionRequestShellCommand:
     identifier: str
@@ -877,6 +890,13 @@ class PermissionRequestShellCommand:
         result["identifier"] = from_str(self.identifier)
         result["readOnly"] = from_bool(self.read_only)
         return result
+
+
+class PermissionRequestMemoryDirection(Enum):
+    """Vote direction (vote only)"""
+
+    DOWNVOTE = "downvote"
+    UPVOTE = "upvote"
 
 
 class Kind(Enum):
@@ -921,7 +941,7 @@ class PermissionRequest:
     
     URL access permission request
     
-    Memory storage permission request
+    Memory operation permission request
     
     Custom tool invocation permission request
     
@@ -999,14 +1019,23 @@ class PermissionRequest:
     url: str | None = None
     """URL to be fetched"""
 
+    action: PermissionRequestMemoryAction | None = None
+    """Whether this is a store or vote memory operation"""
+
     citations: str | None = None
-    """Source references for the stored fact"""
+    """Source references for the stored fact (store only)"""
+
+    direction: PermissionRequestMemoryDirection | None = None
+    """Vote direction (vote only)"""
 
     fact: str | None = None
-    """The fact or convention being stored"""
+    """The fact being stored or voted on"""
+
+    reason: str | None = None
+    """Reason for the vote (vote only)"""
 
     subject: str | None = None
-    """Topic or subject of the memory being stored"""
+    """Topic or subject of the memory (store only)"""
 
     tool_description: str | None = None
     """Description of what the custom tool does"""
@@ -1040,13 +1069,16 @@ class PermissionRequest:
         tool_name = from_union([from_str, from_none], obj.get("toolName"))
         tool_title = from_union([from_str, from_none], obj.get("toolTitle"))
         url = from_union([from_str, from_none], obj.get("url"))
+        action = from_union([PermissionRequestMemoryAction, from_none], obj.get("action"))
         citations = from_union([from_str, from_none], obj.get("citations"))
+        direction = from_union([PermissionRequestMemoryDirection, from_none], obj.get("direction"))
         fact = from_union([from_str, from_none], obj.get("fact"))
+        reason = from_union([from_str, from_none], obj.get("reason"))
         subject = from_union([from_str, from_none], obj.get("subject"))
         tool_description = from_union([from_str, from_none], obj.get("toolDescription"))
         hook_message = from_union([from_str, from_none], obj.get("hookMessage"))
         tool_args = obj.get("toolArgs")
-        return PermissionRequest(kind, can_offer_session_approval, commands, full_command_text, has_write_file_redirection, intention, possible_paths, possible_urls, tool_call_id, warning, diff, file_name, new_file_contents, path, args, read_only, server_name, tool_name, tool_title, url, citations, fact, subject, tool_description, hook_message, tool_args)
+        return PermissionRequest(kind, can_offer_session_approval, commands, full_command_text, has_write_file_redirection, intention, possible_paths, possible_urls, tool_call_id, warning, diff, file_name, new_file_contents, path, args, read_only, server_name, tool_name, tool_title, url, action, citations, direction, fact, reason, subject, tool_description, hook_message, tool_args)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -1089,10 +1121,16 @@ class PermissionRequest:
             result["toolTitle"] = from_union([from_str, from_none], self.tool_title)
         if self.url is not None:
             result["url"] = from_union([from_str, from_none], self.url)
+        if self.action is not None:
+            result["action"] = from_union([lambda x: to_enum(PermissionRequestMemoryAction, x), from_none], self.action)
         if self.citations is not None:
             result["citations"] = from_union([from_str, from_none], self.citations)
+        if self.direction is not None:
+            result["direction"] = from_union([lambda x: to_enum(PermissionRequestMemoryDirection, x), from_none], self.direction)
         if self.fact is not None:
             result["fact"] = from_union([from_str, from_none], self.fact)
+        if self.reason is not None:
+            result["reason"] = from_union([from_str, from_none], self.reason)
         if self.subject is not None:
             result["subject"] = from_union([from_str, from_none], self.subject)
         if self.tool_description is not None:
@@ -2330,6 +2368,9 @@ class Data:
     quota_snapshots: dict[str, AssistantUsageQuotaSnapshot] | None = None
     """Per-quota resource usage snapshots, keyed by quota identifier"""
 
+    reasoning_tokens: float | None = None
+    """Number of output tokens used for reasoning (e.g., chain-of-thought)"""
+
     ttft_ms: float | None = None
     """Time to first token in milliseconds. Only available for streaming requests"""
 
@@ -2690,6 +2731,7 @@ class Data:
         inter_token_latency_ms = from_union([from_float, from_none], obj.get("interTokenLatencyMs"))
         model = from_union([from_str, from_none], obj.get("model"))
         quota_snapshots = from_union([lambda x: from_dict(AssistantUsageQuotaSnapshot.from_dict, x), from_none], obj.get("quotaSnapshots"))
+        reasoning_tokens = from_union([from_float, from_none], obj.get("reasoningTokens"))
         ttft_ms = from_union([from_float, from_none], obj.get("ttftMs"))
         reason = from_union([from_str, from_none], obj.get("reason"))
         arguments = obj.get("arguments")
@@ -2757,7 +2799,7 @@ class Data:
         servers = from_union([lambda x: from_list(MCPServersLoadedServer.from_dict, x), from_none], obj.get("servers"))
         status = from_union([MCPServerStatus, from_none], obj.get("status"))
         extensions = from_union([lambda x: from_list(ExtensionsLoadedExtension.from_dict, x), from_none], obj.get("extensions"))
-        return Data(already_in_use, context, copilot_version, producer, reasoning_effort, remote_steerable, selected_model, session_id, start_time, version, event_count, resume_time, error_type, message, provider_call_id, stack, status_code, url, aborted, title, info_type, warning_type, new_model, previous_model, previous_reasoning_effort, new_mode, previous_mode, operation, path, handoff_time, host, remote_session_id, repository, source_type, summary, messages_removed_during_truncation, performed_by, post_truncation_messages_length, post_truncation_tokens_in_messages, pre_truncation_messages_length, pre_truncation_tokens_in_messages, token_limit, tokens_removed_during_truncation, events_removed, up_to_event_id, code_changes, conversation_tokens, current_model, current_tokens, error_reason, model_metrics, session_start_time, shutdown_type, system_tokens, tool_definitions_tokens, total_api_duration_ms, total_premium_requests, base_commit, branch, cwd, git_root, head_commit, host_type, is_initial, messages_length, checkpoint_number, checkpoint_path, compaction_tokens_used, error, messages_removed, post_compaction_tokens, pre_compaction_messages_length, pre_compaction_tokens, request_id, success, summary_content, tokens_removed, agent_mode, attachments, content, interaction_id, source, transformed_content, turn_id, intent, reasoning_id, delta_content, total_response_size_bytes, encrypted_content, message_id, output_tokens, parent_tool_call_id, phase, reasoning_opaque, reasoning_text, tool_requests, api_call_id, cache_read_tokens, cache_write_tokens, copilot_usage, cost, duration, initiator, input_tokens, inter_token_latency_ms, model, quota_snapshots, ttft_ms, reason, arguments, tool_call_id, tool_name, mcp_server_name, mcp_tool_name, partial_output, progress_message, is_user_requested, result, tool_telemetry, allowed_tools, description, name, plugin_name, plugin_version, agent_description, agent_display_name, agent_name, duration_ms, total_tokens, total_tool_calls, tools, hook_invocation_id, hook_type, input, output, metadata, role, kind, permission_request, resolved_by_hook, allow_freeform, choices, question, answer, was_freeform, elicitation_source, mode, requested_schema, action, mcp_request_id, server_name, server_url, static_client_config, traceparent, tracestate, command, args, command_name, commands, ui, actions, plan_content, recommended_action, approved, auto_approve_edits, feedback, selected_action, skills, agents, errors, warnings, servers, status, extensions)
+        return Data(already_in_use, context, copilot_version, producer, reasoning_effort, remote_steerable, selected_model, session_id, start_time, version, event_count, resume_time, error_type, message, provider_call_id, stack, status_code, url, aborted, title, info_type, warning_type, new_model, previous_model, previous_reasoning_effort, new_mode, previous_mode, operation, path, handoff_time, host, remote_session_id, repository, source_type, summary, messages_removed_during_truncation, performed_by, post_truncation_messages_length, post_truncation_tokens_in_messages, pre_truncation_messages_length, pre_truncation_tokens_in_messages, token_limit, tokens_removed_during_truncation, events_removed, up_to_event_id, code_changes, conversation_tokens, current_model, current_tokens, error_reason, model_metrics, session_start_time, shutdown_type, system_tokens, tool_definitions_tokens, total_api_duration_ms, total_premium_requests, base_commit, branch, cwd, git_root, head_commit, host_type, is_initial, messages_length, checkpoint_number, checkpoint_path, compaction_tokens_used, error, messages_removed, post_compaction_tokens, pre_compaction_messages_length, pre_compaction_tokens, request_id, success, summary_content, tokens_removed, agent_mode, attachments, content, interaction_id, source, transformed_content, turn_id, intent, reasoning_id, delta_content, total_response_size_bytes, encrypted_content, message_id, output_tokens, parent_tool_call_id, phase, reasoning_opaque, reasoning_text, tool_requests, api_call_id, cache_read_tokens, cache_write_tokens, copilot_usage, cost, duration, initiator, input_tokens, inter_token_latency_ms, model, quota_snapshots, reasoning_tokens, ttft_ms, reason, arguments, tool_call_id, tool_name, mcp_server_name, mcp_tool_name, partial_output, progress_message, is_user_requested, result, tool_telemetry, allowed_tools, description, name, plugin_name, plugin_version, agent_description, agent_display_name, agent_name, duration_ms, total_tokens, total_tool_calls, tools, hook_invocation_id, hook_type, input, output, metadata, role, kind, permission_request, resolved_by_hook, allow_freeform, choices, question, answer, was_freeform, elicitation_source, mode, requested_schema, action, mcp_request_id, server_name, server_url, static_client_config, traceparent, tracestate, command, args, command_name, commands, ui, actions, plan_content, recommended_action, approved, auto_approve_edits, feedback, selected_action, skills, agents, errors, warnings, servers, status, extensions)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -2975,6 +3017,8 @@ class Data:
             result["model"] = from_union([from_str, from_none], self.model)
         if self.quota_snapshots is not None:
             result["quotaSnapshots"] = from_union([lambda x: from_dict(lambda x: to_class(AssistantUsageQuotaSnapshot, x), x), from_none], self.quota_snapshots)
+        if self.reasoning_tokens is not None:
+            result["reasoningTokens"] = from_union([to_float, from_none], self.reasoning_tokens)
         if self.ttft_ms is not None:
             result["ttftMs"] = from_union([to_float, from_none], self.ttft_ms)
         if self.reason is not None:

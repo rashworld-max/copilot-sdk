@@ -646,35 +646,35 @@ type UIElicitationSchema struct {
 }
 
 type UIElicitationSchemaProperty struct {
-	Default     *UIElicitationContent                           `json:"default"`
-	Description *string                                         `json:"description,omitempty"`
-	Enum        []string                                        `json:"enum,omitempty"`
-	EnumNames   []string                                        `json:"enumNames,omitempty"`
-	Title       *string                                         `json:"title,omitempty"`
-	Type        UIElicitationSchemaPropertyNumberType           `json:"type"`
-	OneOf       []UIElicitationSchemaPropertyStringOneOfDetails `json:"oneOf,omitempty"`
-	Items       *UIElicitationSchemaPropertyArrayItems          `json:"items,omitempty"`
-	MaxItems    *float64                                        `json:"maxItems,omitempty"`
-	MinItems    *float64                                        `json:"minItems,omitempty"`
-	Format      *UIElicitationSchemaPropertyStringFormatDetails `json:"format,omitempty"`
-	MaxLength   *float64                                        `json:"maxLength,omitempty"`
-	MinLength   *float64                                        `json:"minLength,omitempty"`
-	Maximum     *float64                                        `json:"maximum,omitempty"`
-	Minimum     *float64                                        `json:"minimum,omitempty"`
+	Default     *UIElicitationContent                    `json:"default"`
+	Description *string                                  `json:"description,omitempty"`
+	Enum        []string                                 `json:"enum,omitempty"`
+	EnumNames   []string                                 `json:"enumNames,omitempty"`
+	Title       *string                                  `json:"title,omitempty"`
+	Type        UIElicitationSchemaPropertyNumberType    `json:"type"`
+	OneOf       []ElicitationStringOneOfFieldOneOf       `json:"oneOf,omitempty"`
+	Items       *ElicitationArrayFieldItems              `json:"items,omitempty"`
+	MaxItems    *float64                                 `json:"maxItems,omitempty"`
+	MinItems    *float64                                 `json:"minItems,omitempty"`
+	Format      *UIElicitationSchemaPropertyStringFormat `json:"format,omitempty"`
+	MaxLength   *float64                                 `json:"maxLength,omitempty"`
+	MinLength   *float64                                 `json:"minLength,omitempty"`
+	Maximum     *float64                                 `json:"maximum,omitempty"`
+	Minimum     *float64                                 `json:"minimum,omitempty"`
 }
 
-type UIElicitationSchemaPropertyArrayItems struct {
-	Enum  []string                                          `json:"enum,omitempty"`
-	Type  *ItemsType                                        `json:"type,omitempty"`
-	AnyOf []UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf `json:"anyOf,omitempty"`
+type ElicitationArrayFieldItems struct {
+	Enum  []string                               `json:"enum,omitempty"`
+	Type  *ItemsType                             `json:"type,omitempty"`
+	AnyOf []ElicitationArrayAnyOfFieldItemsAnyOf `json:"anyOf,omitempty"`
 }
 
-type UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf struct {
+type ElicitationArrayAnyOfFieldItemsAnyOf struct {
 	Const string `json:"const"`
 	Title string `json:"title"`
 }
 
-type UIElicitationSchemaPropertyStringOneOfDetails struct {
+type ElicitationStringOneOfFieldOneOf struct {
 	Const string `json:"const"`
 	Title string `json:"title"`
 }
@@ -863,6 +863,8 @@ type UsageMetricsModelMetricUsage struct {
 	InputTokens int64 `json:"inputTokens"`
 	// Total output tokens produced
 	OutputTokens int64 `json:"outputTokens"`
+	// Total output tokens used for reasoning
+	ReasoningTokens *int64 `json:"reasoningTokens,omitempty"`
 }
 
 type SessionFSReadFileResult struct {
@@ -1075,13 +1077,13 @@ const (
 	UIElicitationActionDecline UIElicitationAction = "decline"
 )
 
-type UIElicitationSchemaPropertyStringFormatDetails string
+type UIElicitationSchemaPropertyStringFormat string
 
 const (
-	UIElicitationSchemaPropertyStringFormatDetailsDate     UIElicitationSchemaPropertyStringFormatDetails = "date"
-	UIElicitationSchemaPropertyStringFormatDetailsDateTime UIElicitationSchemaPropertyStringFormatDetails = "date-time"
-	UIElicitationSchemaPropertyStringFormatDetailsEmail    UIElicitationSchemaPropertyStringFormatDetails = "email"
-	UIElicitationSchemaPropertyStringFormatDetailsURI      UIElicitationSchemaPropertyStringFormatDetails = "uri"
+	UIElicitationSchemaPropertyStringFormatDate     UIElicitationSchemaPropertyStringFormat = "date"
+	UIElicitationSchemaPropertyStringFormatDateTime UIElicitationSchemaPropertyStringFormat = "date-time"
+	UIElicitationSchemaPropertyStringFormatEmail    UIElicitationSchemaPropertyStringFormat = "email"
+	UIElicitationSchemaPropertyStringFormatURI      UIElicitationSchemaPropertyStringFormat = "uri"
 )
 
 type ItemsType string
@@ -1893,13 +1895,7 @@ func (a *HistoryApi) Compact(ctx context.Context) (*HistoryCompact, error) {
 	req := map[string]any{"sessionId": a.sessionID}
 	raw, err := a.client.Request("session.history.compact", req)
 	if err != nil {
-		var rpcErr *jsonrpc2.Error
-		if errors.As(err, &rpcErr) && rpcErr.Code == jsonrpc2.ErrMethodNotFound.Code {
-			raw, err = a.client.Request("session.compaction.compact", req)
-		}
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	var result HistoryCompact
 	if err := json.Unmarshal(raw, &result); err != nil {

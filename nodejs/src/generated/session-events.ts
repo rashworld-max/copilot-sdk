@@ -270,7 +270,7 @@ export type SessionEvent =
       ephemeral: true;
       type: "session.idle";
       /**
-       * Payload indicating the session is idle with no background agents in flight
+       * Payload indicating the session is fully idle with no background tasks in flight
        */
       data: {
         /**
@@ -520,6 +520,248 @@ export type SessionEvent =
        * When true, the event is transient and not persisted to the session event log on disk
        */
       ephemeral?: boolean;
+      type: "session.import_legacy";
+      /**
+       * Legacy session import data including the complete session JSON, import timestamp, and source file path
+       */
+      data: {
+        legacySession: {
+          sessionId: string;
+          startTime: string;
+          chatMessages: (
+            | {
+                content:
+                  | string
+                  | {
+                      type: "text";
+                      text: string;
+                    }[];
+                role: "developer";
+                name?: string;
+              }
+            | {
+                content:
+                  | string
+                  | {
+                      type: "text";
+                      text: string;
+                    }[];
+                role: "system";
+                name?: string;
+              }
+            | {
+                content:
+                  | string
+                  | (
+                      | {
+                          type: "text";
+                          text: string;
+                        }
+                      | {
+                          type: "image_url";
+                          image_url: {
+                            url: string;
+                            detail?: "auto" | "low" | "high";
+                          };
+                        }
+                      | {
+                          type: "input_audio";
+                          input_audio: {
+                            data: string;
+                            format: "wav" | "mp3";
+                          };
+                        }
+                      | {
+                          type: "file";
+                          file: {
+                            file_date?: string;
+                            file_id?: string;
+                            filename?: string;
+                          };
+                        }
+                    )[];
+                role: "user";
+                name?: string;
+              }
+            | {
+                content?:
+                  | (
+                      | string
+                      | (
+                          | {
+                              type: "text";
+                              text: string;
+                            }
+                          | {
+                              type: "refusal";
+                              refusal: string;
+                            }
+                        )[]
+                    )
+                  | null;
+                role: "assistant";
+                name?: string;
+                refusal?: string | null;
+                audio?: {
+                  id: string;
+                } | null;
+                function_call?: {
+                  name: string;
+                  arguments: string;
+                } | null;
+                tool_calls?: (
+                  | {
+                      id: string;
+                      type: "function";
+                      function: {
+                        name: string;
+                        arguments: string;
+                      };
+                    }
+                  | {
+                      id: string;
+                      type: "custom";
+                      custom: {
+                        name: string;
+                        input: string;
+                      };
+                    }
+                )[];
+              }
+            | {
+                content:
+                  | string
+                  | {
+                      type: "text";
+                      text: string;
+                    }[];
+                role: "tool";
+                tool_call_id: string;
+              }
+            | {
+                content: string | null;
+                role: "function";
+                name: string;
+              }
+          )[];
+          timeline: ((
+            | {
+                type: "copilot";
+                text: string;
+                isStreaming?: boolean;
+              }
+            | {
+                type: "error";
+                text: string;
+              }
+            | {
+                type: "info";
+                text: string;
+              }
+            | {
+                type: "warning";
+                text: string;
+              }
+            | {
+                type: "user";
+                text: string;
+              }
+            | {
+                type: "tool_call_requested";
+                callId: string;
+                name: string;
+                toolTitle?: string;
+                mcpServerName?: string;
+                intentionSummary: string | null;
+                arguments?: unknown;
+                partialOutput?: string;
+                isHidden?: boolean;
+                isAlwaysExpanded?: boolean;
+                showNoContent?: boolean;
+              }
+            | {
+                type: "tool_call_completed";
+                callId: string;
+                name: string;
+                toolTitle?: string;
+                mcpServerName?: string;
+                intentionSummary: string | null;
+                result:
+                  | {
+                      type: "success";
+                      log: string;
+                      detailedLog?: string;
+                      markdown?: boolean;
+                    }
+                  | {
+                      type: "failure";
+                      log: string;
+                      markdown?: boolean;
+                    }
+                  | {
+                      type: "rejected";
+                      markdown?: boolean;
+                    }
+                  | {
+                      type: "denied";
+                      log: string;
+                      markdown?: boolean;
+                    };
+                arguments?: unknown;
+                isHidden?: boolean;
+                isAlwaysExpanded?: boolean;
+                showNoContent?: boolean;
+              }
+          ) & {
+            id: string;
+            timestamp: string;
+          })[];
+          selectedModel?:
+            | "claude-sonnet-4.6"
+            | "claude-sonnet-4.5"
+            | "claude-haiku-4.5"
+            | "claude-opus-4.6"
+            | "claude-opus-4.6-fast"
+            | "claude-opus-4.6-1m"
+            | "claude-opus-4.5"
+            | "claude-sonnet-4"
+            | "goldeneye"
+            | "gpt-5.4"
+            | "gpt-5.3-codex"
+            | "gpt-5.2-codex"
+            | "gpt-5.2"
+            | "gpt-5.1"
+            | "gpt-5.4-mini"
+            | "gpt-5-mini"
+            | "gpt-4.1";
+        };
+        /**
+         * ISO 8601 timestamp when the import was performed
+         */
+        importTime: string;
+        /**
+         * File path of the legacy session file that was imported
+         */
+        sourceFile: string;
+      };
+    }
+  | {
+      /**
+       * Unique event identifier (UUID v4), generated when the event is emitted
+       */
+      id: string;
+      /**
+       * ISO 8601 timestamp when the event was created
+       */
+      timestamp: string;
+      /**
+       * ID of the chronologically preceding event in the session, forming a linked chain. Null for the first event.
+       */
+      parentId: string | null;
+      /**
+       * When true, the event is transient and not persisted to the session event log on disk
+       */
+      ephemeral?: boolean;
       type: "session.handoff";
       /**
        * Session handoff metadata including source, context, and repository information
@@ -644,7 +886,7 @@ export type SessionEvent =
        */
       data: {
         /**
-         * Event ID that was rewound to; this event and all after it were removed
+         * Event ID that was rewound to; all events after this one were removed
          */
         upToEventId: string;
         /**
@@ -1469,10 +1711,6 @@ export type SessionEvent =
          * CAPI interaction ID for correlating this message with upstream telemetry
          */
         interactionId?: string;
-        /**
-         * GitHub request tracing ID (x-github-request-id header) for correlating with server-side logs
-         */
-        requestId?: string;
         /**
          * Tool call ID of the parent tool invocation when this event originates from a sub-agent
          */

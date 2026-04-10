@@ -5,8 +5,6 @@ Generated from: api.schema.json
 
 from typing import TYPE_CHECKING
 
-from .._jsonrpc import JsonRpcError
-
 if TYPE_CHECKING:
     from .._jsonrpc import JsonRpcClient
 
@@ -2076,23 +2074,23 @@ class UIElicitationResponse:
             result["content"] = from_union([lambda x: from_dict(lambda x: from_union([to_float, from_bool, lambda x: from_list(from_str, x), from_str], x), x), from_none], self.content)
         return result
 
-class UIElicitationSchemaPropertyStringFormatDetails(Enum):
+class UIElicitationSchemaPropertyStringFormat(Enum):
     DATE = "date"
     DATE_TIME = "date-time"
     EMAIL = "email"
     URI = "uri"
 
 @dataclass
-class UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf:
+class ElicitationArrayAnyOfFieldItemsAnyOf:
     const: str
     title: str
 
     @staticmethod
-    def from_dict(obj: Any) -> 'UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf':
+    def from_dict(obj: Any) -> 'ElicitationArrayAnyOfFieldItemsAnyOf':
         assert isinstance(obj, dict)
         const = from_str(obj.get("const"))
         title = from_str(obj.get("title"))
-        return UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf(const, title)
+        return ElicitationArrayAnyOfFieldItemsAnyOf(const, title)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -2104,18 +2102,18 @@ class ItemsType(Enum):
     STRING = "string"
 
 @dataclass
-class UIElicitationSchemaPropertyArrayItems:
+class ElicitationArrayFieldItems:
     enum: list[str] | None = None
     type: ItemsType | None = None
-    any_of: list[UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf] | None = None
+    any_of: list[ElicitationArrayAnyOfFieldItemsAnyOf] | None = None
 
     @staticmethod
-    def from_dict(obj: Any) -> 'UIElicitationSchemaPropertyArrayItems':
+    def from_dict(obj: Any) -> 'ElicitationArrayFieldItems':
         assert isinstance(obj, dict)
         enum = from_union([lambda x: from_list(from_str, x), from_none], obj.get("enum"))
         type = from_union([ItemsType, from_none], obj.get("type"))
-        any_of = from_union([lambda x: from_list(UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf.from_dict, x), from_none], obj.get("anyOf"))
-        return UIElicitationSchemaPropertyArrayItems(enum, type, any_of)
+        any_of = from_union([lambda x: from_list(ElicitationArrayAnyOfFieldItemsAnyOf.from_dict, x), from_none], obj.get("anyOf"))
+        return ElicitationArrayFieldItems(enum, type, any_of)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -2124,20 +2122,20 @@ class UIElicitationSchemaPropertyArrayItems:
         if self.type is not None:
             result["type"] = from_union([lambda x: to_enum(ItemsType, x), from_none], self.type)
         if self.any_of is not None:
-            result["anyOf"] = from_union([lambda x: from_list(lambda x: to_class(UIElicitationSchemaPropertyArrayAnyOfItemsAnyOf, x), x), from_none], self.any_of)
+            result["anyOf"] = from_union([lambda x: from_list(lambda x: to_class(ElicitationArrayAnyOfFieldItemsAnyOf, x), x), from_none], self.any_of)
         return result
 
 @dataclass
-class UIElicitationSchemaPropertyStringOneOfDetails:
+class ElicitationStringOneOfFieldOneOf:
     const: str
     title: str
 
     @staticmethod
-    def from_dict(obj: Any) -> 'UIElicitationSchemaPropertyStringOneOfDetails':
+    def from_dict(obj: Any) -> 'ElicitationStringOneOfFieldOneOf':
         assert isinstance(obj, dict)
         const = from_str(obj.get("const"))
         title = from_str(obj.get("title"))
-        return UIElicitationSchemaPropertyStringOneOfDetails(const, title)
+        return ElicitationStringOneOfFieldOneOf(const, title)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -2160,11 +2158,11 @@ class UIElicitationSchemaProperty:
     enum: list[str] | None = None
     enum_names: list[str] | None = None
     title: str | None = None
-    one_of: list[UIElicitationSchemaPropertyStringOneOfDetails] | None = None
-    items: UIElicitationSchemaPropertyArrayItems | None = None
+    one_of: list[ElicitationStringOneOfFieldOneOf] | None = None
+    items: ElicitationArrayFieldItems | None = None
     max_items: float | None = None
     min_items: float | None = None
-    format: UIElicitationSchemaPropertyStringFormatDetails | None = None
+    format: UIElicitationSchemaPropertyStringFormat | None = None
     max_length: float | None = None
     min_length: float | None = None
     maximum: float | None = None
@@ -2179,11 +2177,11 @@ class UIElicitationSchemaProperty:
         enum = from_union([lambda x: from_list(from_str, x), from_none], obj.get("enum"))
         enum_names = from_union([lambda x: from_list(from_str, x), from_none], obj.get("enumNames"))
         title = from_union([from_str, from_none], obj.get("title"))
-        one_of = from_union([lambda x: from_list(UIElicitationSchemaPropertyStringOneOfDetails.from_dict, x), from_none], obj.get("oneOf"))
-        items = from_union([UIElicitationSchemaPropertyArrayItems.from_dict, from_none], obj.get("items"))
+        one_of = from_union([lambda x: from_list(ElicitationStringOneOfFieldOneOf.from_dict, x), from_none], obj.get("oneOf"))
+        items = from_union([ElicitationArrayFieldItems.from_dict, from_none], obj.get("items"))
         max_items = from_union([from_float, from_none], obj.get("maxItems"))
         min_items = from_union([from_float, from_none], obj.get("minItems"))
-        format = from_union([UIElicitationSchemaPropertyStringFormatDetails, from_none], obj.get("format"))
+        format = from_union([UIElicitationSchemaPropertyStringFormat, from_none], obj.get("format"))
         max_length = from_union([from_float, from_none], obj.get("maxLength"))
         min_length = from_union([from_float, from_none], obj.get("minLength"))
         maximum = from_union([from_float, from_none], obj.get("maximum"))
@@ -2204,15 +2202,15 @@ class UIElicitationSchemaProperty:
         if self.title is not None:
             result["title"] = from_union([from_str, from_none], self.title)
         if self.one_of is not None:
-            result["oneOf"] = from_union([lambda x: from_list(lambda x: to_class(UIElicitationSchemaPropertyStringOneOfDetails, x), x), from_none], self.one_of)
+            result["oneOf"] = from_union([lambda x: from_list(lambda x: to_class(ElicitationStringOneOfFieldOneOf, x), x), from_none], self.one_of)
         if self.items is not None:
-            result["items"] = from_union([lambda x: to_class(UIElicitationSchemaPropertyArrayItems, x), from_none], self.items)
+            result["items"] = from_union([lambda x: to_class(ElicitationArrayFieldItems, x), from_none], self.items)
         if self.max_items is not None:
             result["maxItems"] = from_union([to_float, from_none], self.max_items)
         if self.min_items is not None:
             result["minItems"] = from_union([to_float, from_none], self.min_items)
         if self.format is not None:
-            result["format"] = from_union([lambda x: to_enum(UIElicitationSchemaPropertyStringFormatDetails, x), from_none], self.format)
+            result["format"] = from_union([lambda x: to_enum(UIElicitationSchemaPropertyStringFormat, x), from_none], self.format)
         if self.max_length is not None:
             result["maxLength"] = from_union([to_float, from_none], self.max_length)
         if self.min_length is not None:
@@ -2738,6 +2736,9 @@ class UsageMetricsModelMetricUsage:
     output_tokens: int
     """Total output tokens produced"""
 
+    reasoning_tokens: int | None = None
+    """Total output tokens used for reasoning"""
+
     @staticmethod
     def from_dict(obj: Any) -> 'UsageMetricsModelMetricUsage':
         assert isinstance(obj, dict)
@@ -2745,7 +2746,8 @@ class UsageMetricsModelMetricUsage:
         cache_write_tokens = from_int(obj.get("cacheWriteTokens"))
         input_tokens = from_int(obj.get("inputTokens"))
         output_tokens = from_int(obj.get("outputTokens"))
-        return UsageMetricsModelMetricUsage(cache_read_tokens, cache_write_tokens, input_tokens, output_tokens)
+        reasoning_tokens = from_union([from_int, from_none], obj.get("reasoningTokens"))
+        return UsageMetricsModelMetricUsage(cache_read_tokens, cache_write_tokens, input_tokens, output_tokens, reasoning_tokens)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -2753,6 +2755,8 @@ class UsageMetricsModelMetricUsage:
         result["cacheWriteTokens"] = from_int(self.cache_write_tokens)
         result["inputTokens"] = from_int(self.input_tokens)
         result["outputTokens"] = from_int(self.output_tokens)
+        if self.reasoning_tokens is not None:
+            result["reasoningTokens"] = from_union([from_int, from_none], self.reasoning_tokens)
         return result
 
 @dataclass
@@ -4103,18 +4107,7 @@ class HistoryApi:
         self._session_id = session_id
 
     async def compact(self, *, timeout: float | None = None) -> HistoryCompact:
-        params = {"sessionId": self._session_id}
-        try:
-            response = await self._client.request(
-                "session.history.compact", params, **_timeout_kwargs(timeout)
-            )
-        except JsonRpcError as exc:
-            if exc.code != -32601:
-                raise
-            response = await self._client.request(
-                "session.compaction.compact", params, **_timeout_kwargs(timeout)
-            )
-        return HistoryCompact.from_dict(response)
+        return HistoryCompact.from_dict(await self._client.request("session.history.compact", {"sessionId": self._session_id}, **_timeout_kwargs(timeout)))
 
     async def truncate(self, params: HistoryTruncateRequest, *, timeout: float | None = None) -> HistoryTruncateResult:
         params_dict = {k: v for k, v in params.to_dict().items() if v is not None}

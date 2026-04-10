@@ -1426,6 +1426,10 @@ public class UsageMetricsModelMetricUsage
     /// <summary>Total tokens written to prompt cache.</summary>
     [JsonPropertyName("cacheWriteTokens")]
     public double CacheWriteTokens { get; set; }
+
+    /// <summary>Total output tokens used for reasoning.</summary>
+    [JsonPropertyName("reasoningTokens")]
+    public double? ReasoningTokens { get; set; }
 }
 
 /// <summary>RPC data type for UsageMetricsModelMetric operations.</summary>
@@ -2587,14 +2591,7 @@ public class HistoryApi
     public async Task<HistoryCompact> CompactAsync(CancellationToken cancellationToken = default)
     {
         var request = new SessionHistoryCompactRequest { SessionId = _sessionId };
-        try
-        {
-            return await CopilotClient.InvokeRpcAsync<HistoryCompact>(_rpc, "session.history.compact", [request], cancellationToken);
-        }
-        catch (IOException ex) when (ex.InnerException is RemoteMethodNotFoundException)
-        {
-            return await CopilotClient.InvokeRpcAsync<HistoryCompact>(_rpc, "session.compaction.compact", [request], cancellationToken);
-        }
+        return await CopilotClient.InvokeRpcAsync<HistoryCompact>(_rpc, "session.history.compact", [request], cancellationToken);
     }
 
     /// <summary>Calls "session.history.truncate".</summary>
