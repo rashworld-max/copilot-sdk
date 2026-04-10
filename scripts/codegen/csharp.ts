@@ -595,7 +595,6 @@ export async function generateSessionEvents(schemaPath?: string): Promise<void> 
 // RPC TYPES
 // ══════════════════════════════════════════════════════════════════════════════
 
-let emittedRpcClasses = new Set<string>();
 let emittedRpcClassSchemas = new Map<string, string>();
 let experimentalRpcTypes = new Set<string>();
 let rpcKnownTypes = new Map<string, string>();
@@ -628,20 +627,6 @@ function stableStringify(value: unknown): string {
     return JSON.stringify(value);
 }
 
-function chooseRpcClassName(preferredName: string, fallbackName: string, schema: JSONSchema7): string {
-    const schemaKey = stableStringify(schema);
-    const existingPreferred = emittedRpcClassSchemas.get(preferredName);
-    if (!existingPreferred || existingPreferred === schemaKey) return preferredName;
-
-    let candidate = fallbackName;
-    let suffix = 2;
-    while (true) {
-        const existing = emittedRpcClassSchemas.get(candidate);
-        if (!existing || existing === schemaKey) return candidate;
-        candidate = `${fallbackName}${suffix++}`;
-    }
-}
-
 function resolveRpcType(schema: JSONSchema7, isRequired: boolean, parentClassName: string, propName: string, classes: string[]): string {
     // Handle anyOf: [T, null] → T? (nullable typed property)
     if (schema.anyOf) {
@@ -664,10 +649,8 @@ function resolveRpcType(schema: JSONSchema7, isRequired: boolean, parentClassNam
     if (schema.type === "array" && schema.items) {
         const items = schema.items as JSONSchema7;
         if (items.type === "object" && items.properties) {
-            const defaultName = (items.title as string) ?? singularPascal(propName);
-            const contextualName = `${parentClassName}${defaultName}`;
-            const itemClass = chooseRpcClassName(defaultName, contextualName, items);
-            if (!emittedRpcClasses.has(itemClass)) classes.push(emitRpcClass(itemClass, items, "public", classes));
+            const itemClass = (items.title as string) ?? singularPascal(propName);
+            classes.push(emitRpcClass(itemClass, items, "public", classes));
             return isRequired ? `List<${itemClass}>` : `List<${itemClass}>?`;
         }
         const itemType = schemaTypeToCSharp(items, true, rpcKnownTypes);
@@ -687,9 +670,18 @@ function resolveRpcType(schema: JSONSchema7, isRequired: boolean, parentClassNam
 }
 
 function emitRpcClass(className: string, schema: JSONSchema7, visibility: "public" | "internal", extraClasses: string[]): string {
-    if (emittedRpcClasses.has(className)) return "";
-    emittedRpcClasses.add(className);
-    emittedRpcClassSchemas.set(className, stableStringify(schema));
+    const schemaKey = stableStringify(schema);
+    const existingSchema = emittedRpcClassSchemas.get(className);
+    if (existingSchema) {
+        if (existingSchema !== schemaKey) {
+            throw new Error(
+                `Conflicting RPC class name "${className}" for different schemas. Add a schema title/withTypeName to disambiguate.`
+            );
+        }
+        return "";
+    }
+
+    emittedRpcClassSchemas.set(className, schemaKey);
 
     const requiredSet = new Set(schema.required || []);
     const lines: string[] = [];
@@ -718,7 +710,7 @@ function emitRpcClass(className: string, schema: JSONSchema7, visibility: "publi
             else if (csharpType === "object") defaultVal = " = null!;";
             else if (csharpType.startsWith("List<") || csharpType.startsWith("Dictionary<")) {
                 propAccessors = "{ get => field ??= []; set; }";
-            } else if (emittedRpcClasses.has(csharpType)) {
+            } else if (emittedRpcClassSchemas.has(csharpType)) {
                 propAccessors = "{ get => field ??= new(); set; }";
             }
         }
@@ -1089,7 +1081,6 @@ function emitClientSessionApiRegistration(clientSchema: Record<string, unknown>,
 }
 
 function generateRpcCode(schema: ApiSchema): string {
-    emittedRpcClasses.clear();
     emittedRpcClassSchemas.clear();
     experimentalRpcTypes.clear();
     rpcKnownTypes.clear();
@@ -1134,7 +1125,7 @@ internal static class Diagnostics
     if (clientSessionParts.length > 0) lines.push(...clientSessionParts, "");
 
     // Add JsonSerializerContext for AOT/trimming support
-    const typeNames = [...emittedRpcClasses].sort();
+    const typeNames = [...emittedRpcClassSchemas.keys()].sort();
     if (typeNames.length > 0) {
         lines.push(`[JsonSourceGenerationOptions(`);
         lines.push(`    JsonSerializerDefaults.Web,`);
