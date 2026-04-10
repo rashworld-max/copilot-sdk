@@ -14,6 +14,7 @@ import {
     getApiSchemaPath,
     postProcessSchema,
     writeGeneratedFile,
+    collectDefinitions,
     isRpcMethod,
     isNodeFullyExperimental,
     type ApiSchema,
@@ -88,30 +89,56 @@ import type { MessageConnection } from "vscode-jsonrpc/node.js";
     const allMethods = [...collectRpcMethods(schema.server || {}), ...collectRpcMethods(schema.session || {})];
     const clientSessionMethods = collectRpcMethods(schema.clientSession || {});
 
+    // Build a single combined schema with shared definitions and all method types.
+    // This ensures $ref-referenced types are generated exactly once.
+    const sharedDefs = collectDefinitions(schema as Record<string, unknown>);
+    const combinedSchema: JSONSchema7 = {
+        $schema: "http://json-schema.org/draft-07/schema#",
+        type: "object",
+        definitions: { ...sharedDefs },
+    };
+
+    // Track which type names come from experimental methods for JSDoc annotations.
+    const experimentalTypes = new Set<string>();
+
     for (const method of [...allMethods, ...clientSessionMethods]) {
         if (method.result) {
-            const compiled = await compile(method.result, resultTypeName(method.rpcMethod), {
-                bannerComment: "",
-                additionalProperties: false,
-            });
+            combinedSchema.definitions![resultTypeName(method.rpcMethod)] = method.result;
             if (method.stability === "experimental") {
-                lines.push("/** @experimental */");
+                experimentalTypes.add(resultTypeName(method.rpcMethod));
             }
-            lines.push(compiled.trim());
-            lines.push("");
         }
 
         if (method.params?.properties && Object.keys(method.params.properties).length > 0) {
-            const paramsCompiled = await compile(method.params, paramsTypeName(method.rpcMethod), {
-                bannerComment: "",
-                additionalProperties: false,
-            });
+            combinedSchema.definitions![paramsTypeName(method.rpcMethod)] = method.params;
             if (method.stability === "experimental") {
-                lines.push("/** @experimental */");
+                experimentalTypes.add(paramsTypeName(method.rpcMethod));
             }
-            lines.push(paramsCompiled.trim());
-            lines.push("");
         }
+    }
+
+    const compiled = await compile(combinedSchema, "_RpcSchemaRoot", {
+        bannerComment: "",
+        additionalProperties: false,
+        unreachableDefinitions: true,
+    });
+
+    // Strip the placeholder root type and keep only the definition-generated types
+    const strippedTs = compiled
+        .replace(/export interface _RpcSchemaRoot\s*\{[^}]*\}\s*/g, "")
+        .trim();
+
+    if (strippedTs) {
+        // Add @experimental JSDoc annotations for types from experimental methods
+        let annotatedTs = strippedTs;
+        for (const expType of experimentalTypes) {
+            annotatedTs = annotatedTs.replace(
+                new RegExp(`(^|\\n)(export (?:interface|type) ${expType}\\b)`, "m"),
+                `$1/** @experimental */\n$2`
+            );
+        }
+        lines.push(annotatedTs);
+        lines.push("");
     }
 
     // Generate factory functions

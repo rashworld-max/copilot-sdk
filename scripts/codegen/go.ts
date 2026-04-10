@@ -8,7 +8,7 @@
 
 import { execFile } from "child_process";
 import fs from "fs/promises";
-import type { JSONSchema7 } from "json-schema";
+import type { JSONSchema7, JSONSchema7Definition } from "json-schema";
 import { FetchingJSONSchemaStore, InputData, JSONSchemaInput, quicktype } from "quicktype-core";
 import { promisify } from "util";
 import {
@@ -19,6 +19,9 @@ import {
     isRpcMethod,
     postProcessSchema,
     writeGeneratedFile,
+    collectDefinitions,
+    refTypeName,
+    resolveRef,
     type ApiSchema,
     type RpcMethod,
 } from "./utils.js";
@@ -152,6 +155,7 @@ interface GoCodegenCtx {
     enums: string[];
     enumsByValues: Map<string, string>; // sorted-values-key → enumName
     generatedNames: Set<string>;
+    definitions?: Record<string, JSONSchema7Definition>;
 }
 
 function extractGoEventVariants(schema: JSONSchema7): GoEventVariant[] {
@@ -256,6 +260,21 @@ function resolveGoPropertyType(
     ctx: GoCodegenCtx
 ): string {
     const nestedName = parentTypeName + toGoFieldName(jsonPropName);
+
+    // Handle $ref — resolve the reference and generate the referenced type
+    if (propSchema.$ref && typeof propSchema.$ref === "string") {
+        const typeName = toGoFieldName(refTypeName(propSchema.$ref));
+        const resolved = resolveRef(propSchema.$ref, ctx.definitions);
+        if (resolved) {
+            if (resolved.enum) {
+                return getOrCreateGoEnum(typeName, resolved.enum as string[], ctx, resolved.description);
+            }
+            emitGoStruct(typeName, resolved, ctx);
+            return isRequired ? typeName : `*${typeName}`;
+        }
+        // Fallback: use the type name directly
+        return isRequired ? typeName : `*${typeName}`;
+    }
 
     // Handle anyOf
     if (propSchema.anyOf) {
@@ -514,6 +533,7 @@ function generateGoSessionEventsCode(schema: JSONSchema7): string {
         enums: [],
         enumsByValues: new Map(),
         generatedNames: new Set(),
+        definitions: schema.definitions as Record<string, JSONSchema7Definition> | undefined,
     };
 
     // Generate per-event data structs
@@ -802,10 +822,12 @@ async function generateRpc(schemaPath?: string): Promise<void> {
         ...collectRpcMethods(schema.clientSession || {}),
     ];
 
-    // Build a combined schema for quicktype - prefix types to avoid conflicts
+    // Build a combined schema for quicktype — prefix types to avoid conflicts.
+    // Include shared definitions from the API schema for $ref resolution.
+    const sharedDefs = collectDefinitions(schema as Record<string, unknown>);
     const combinedSchema: JSONSchema7 = {
         $schema: "http://json-schema.org/draft-07/schema#",
-        definitions: {},
+        definitions: { ...sharedDefs },
     };
 
     for (const method of allMethods) {
@@ -832,10 +854,14 @@ async function generateRpc(schemaPath?: string): Promise<void> {
         }
     }
 
-    // Generate types via quicktype
+    // Generate types via quicktype — include all definitions in each source for $ref resolution
     const schemaInput = new JSONSchemaInput(new FetchingJSONSchemaStore());
     for (const [name, def] of Object.entries(combinedSchema.definitions!)) {
-        await schemaInput.addSource({ name, schema: JSON.stringify(def) });
+        const schemaWithDefs: JSONSchema7 = {
+            ...(typeof def === "object" ? (def as JSONSchema7) : {}),
+            definitions: combinedSchema.definitions,
+        };
+        await schemaInput.addSource({ name, schema: JSON.stringify(schemaWithDefs) });
     }
 
     const inputData = new InputData();
